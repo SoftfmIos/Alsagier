@@ -13,7 +13,7 @@ targets:
     type: application
     platform: iOS
     sources:
-      - AlsagierV3
+      - Alsagier
     settings:
       base:
         INFOPLIST_FILE: Alsagier/Info.plist

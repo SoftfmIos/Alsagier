@@ -12,11 +12,11 @@ targets:
   AlsagierV3:
     type: application
     platform: iOS
-    sources:
-      - AlsagierV3
+   sources:
+  - Alsagier-V3-Calendar-Test/AlsagierV3
     settings:
       base:
-        INFOPLIST_FILE: AlsagierV3/Info.plist
+       INFOPLIST_FILE: Alsagier-V3-Calendar-Test/AlsagierV3/Info.plist
         CODE_SIGN_STYLE: Automatic
         PRODUCT_NAME: Alsagier
     info:

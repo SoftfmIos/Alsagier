@@ -1,0 +1,25 @@
+workflows:
+  ios-debug:
+    name: Alsagier V3 iOS Build
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      xcode: latest
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          brew install xcodegen || true
+      - name: Generate Xcode project
+        script: |
+          xcodegen generate
+      - name: Compile for iOS Simulator
+        script: |
+          xcodebuild \
+            -project AlsagierV3.xcodeproj \
+            -scheme AlsagierV3 \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+    artifacts:
+      - ~/Library/Developer/Xcode/DerivedData/**/Build/Products/**/*.app

@@ -1,0 +1,30 @@
+name: AlsagierV3
+options:
+  bundleIdPrefix: com.softfm
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    PRODUCT_BUNDLE_IDENTIFIER: com.softfm.alsagierv3
+    DEVELOPMENT_TEAM: ""
+    SWIFT_VERSION: "5.0"
+targets:
+  AlsagierV3:
+    type: application
+    platform: iOS
+    sources:
+      - AlsagierV3
+    settings:
+      base:
+        INFOPLIST_FILE: AlsagierV3/Info.plist
+        CODE_SIGN_STYLE: Automatic
+        PRODUCT_NAME: Alsagier
+    info:
+      path: AlsagierV3/Info.plist
+      properties:
+        CFBundleDisplayName: Alsagier
+        UILaunchScreen: {}
+        NSCalendarsFullAccessUsageDescription: "Alsagier uses your calendar to show today's appointments as fixed time blocks in your daily plan."
+        NSCalendarsWriteOnlyAccessUsageDescription: "Alsagier can add planned events to your calendar when you choose to do so."
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait

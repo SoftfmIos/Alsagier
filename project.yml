@@ -1,26 +1,31 @@
 name: AlsagierV3
+
 options:
   bundleIdPrefix: com.softfm
   deploymentTarget:
     iOS: "17.0"
+
 settings:
   base:
     PRODUCT_BUNDLE_IDENTIFIER: com.softfm.alsagierv3
-    DEVELOPMENT_TEAM: ""
     SWIFT_VERSION: "5.0"
+
 targets:
   AlsagierV3:
     type: application
     platform: iOS
-   sources:
-  - Alsagier-V3-Calendar-Test/AlsagierV3
+
+    sources:
+      - Alsagier-V3-Calendar-Test/AlsagierV3
+
     settings:
       base:
-       INFOPLIST_FILE: Alsagier-V3-Calendar-Test/AlsagierV3/Info.plist
+        INFOPLIST_FILE: Alsagier-V3-Calendar-Test/AlsagierV3/Info.plist
         CODE_SIGN_STYLE: Automatic
         PRODUCT_NAME: Alsagier
+
     info:
-      path: AlsagierV3/Info.plist
+      path: Alsagier-V3-Calendar-Test/AlsagierV3/Info.plist
       properties:
         CFBundleDisplayName: Alsagier
         UILaunchScreen: {}

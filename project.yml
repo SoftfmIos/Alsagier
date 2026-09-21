@@ -1,25 +1,31 @@
 name: AlsagierV3
+
 options:
   bundleIdPrefix: com.softfm
   deploymentTarget:
     iOS: "17.0"
+
 settings:
   base:
     PRODUCT_BUNDLE_IDENTIFIER: com.softfm.alsagierv3
-    DEVELOPMENT_TEAM: ""
     SWIFT_VERSION: "5.0"
+
 targets:
   AlsagierV3:
     type: application
     platform: iOS
-    - path: .
-    includes:
-      - "*.swift"
+
+    sources:
+      - path: .
+        includes:
+          - "*.swift"
+
     settings:
       base:
-        INFOPLIST_FILE: Alsagier/Info.plist
+        INFOPLIST_FILE: Info.plist
         CODE_SIGN_STYLE: Automatic
         PRODUCT_NAME: Alsagier
+
     info:
       path: Info.plist
       properties:

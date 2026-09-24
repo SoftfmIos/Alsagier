@@ -10,11 +10,24 @@ targets:
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - path: .
-        excludes:
-          - README.md
-          - codemagic.yaml
-          - project.yml
+      - AlsagierApp.swift
+      - AlsagierActivityAttributes.swift
+      - AppStore.swift
+      - CalendarManager.swift
+      - HabitsView.swift
+      - LiveActivityManager.swift
+      - MainTabView.swift
+      - Models.swift
+      - MoreView.swift
+      - NotificationManager.swift
+      - PrayerManager.swift
+      - ProjectsView.swift
+      - TasksView.swift
+      - TodayView.swift
+    resources:
+      - Assets.xcassets
+    dependencies:
+      - target: AlsagierLiveActivity
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.softfm.alsagierapp
@@ -23,5 +36,15 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
-    scheme:
-      testTargets: []
+  AlsagierLiveActivity:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - AlsagierLiveActivity
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.softfm.alsagierapp.liveactivity
+        INFOPLIST_FILE: AlsagierLiveActivity/Info.plist
+        SKIP_INSTALL: YES
+        SWIFT_VERSION: "5.0"

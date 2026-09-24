@@ -8,30 +8,34 @@ final class NotificationManager: ObservableObject {
     private let center = UNUserNotificationCenter.current()
 
     func requestAuthorization() async {
-        do {
-            authorized = try await center.requestAuthorization(options: [.alert, .sound, .badge])
-        } catch {
-            authorized = false
+        do { authorized = try await center.requestAuthorization(options: [.alert, .sound, .badge]) }
+        catch { authorized = false }
+    }
+
+    func refresh(for blocks: [ScheduleBlock], minutesBefore: Int) async {
+        center.removeAllPendingNotificationRequests()
+        guard authorized, minutesBefore > 0 else { return }
+        for block in blocks where block.start > Date() && !block.isCompleted && !block.isSkipped {
+            let fire = block.start.addingTimeInterval(TimeInterval(-minutesBefore * 60))
+            guard fire > Date() else { continue }
+            let content = UNMutableNotificationContent()
+            content.title = "Next in \(minutesBefore) minutes"
+            content.body = block.subtitle.map {"\(block.title) — \($0)"} ?? block.title
+            content.sound = .default
+            let parts = Calendar.current.dateComponents([.year,.month,.day,.hour,.minute,.second], from: fire)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
+            try? await center.add(UNNotificationRequest(identifier:"alsagier.block.\(block.id.uuidString)",content:content,trigger:trigger))
         }
     }
 
-    func schedule(_ blocks: [ScheduleBlock]) async {
-        center.removeAllPendingNotificationRequests()
-        guard authorized else { return }
-
-        for block in blocks where block.start > Date() {
-            let reminder = block.start.addingTimeInterval(-10 * 60)
-            guard reminder > Date() else { continue }
-
-            let content = UNMutableNotificationContent()
-            content.title = "Alsagier"
-            content.body = "\(block.title) starts in 10 minutes."
-            content.sound = .default
-
-            let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: reminder)
-            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-            let request = UNNotificationRequest(identifier: "alsagier-\(block.id.uuidString)", content: content, trigger: trigger)
-            try? await center.add(request)
-        }
+    func scheduleWorkdayEnd(at date: Date) async {
+        guard authorized, date > Date() else { return }
+        let content=UNMutableNotificationContent()
+        content.title="Workday complete"
+        content.body="Alsagier has reached your configured work-end time."
+        content.sound = .default
+        let parts=Calendar.current.dateComponents([.year,.month,.day,.hour,.minute],from:date)
+        try? await center.add(UNNotificationRequest(identifier:"alsagier.workday.end",
+            content:content,trigger:UNCalendarNotificationTrigger(dateMatching:parts,repeats:false)))
     }
 }

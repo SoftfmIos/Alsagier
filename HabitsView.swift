@@ -1,96 +1,68 @@
 import SwiftUI
 
-struct HabitsView: View {
-    @EnvironmentObject private var store: AppStore
-    @State private var showAdd = false
-
-    var body: some View {
+struct HabitsView:View {
+    @EnvironmentObject private var store:AppStore
+    @State private var editing:Habit?
+    var body:some View {
         NavigationStack {
             List {
-                ForEach(store.habits) { habit in
-                    HStack {
-                        Button { store.toggleHabit(habit) } label: {
-                            Image(systemName: habit.isEnabled ? "checkmark.circle.fill" : "circle")
+                ForEach(store.habits) { h in
+                    Button{editing=h}label:{
+                        HStack {
+                            Image(systemName:"figure.run").foregroundStyle(.orange)
+                            VStack(alignment:.leading) {
+                                Text(h.name)
+                                Text(h.mode == .fixed ? "\(h.duration)m • fixed days" : "\(h.duration)m • \(h.timesPerWeek)x/week • Alsagier chooses")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if !h.isEnabled {Image(systemName:"pause.circle")}
                         }
-                        .buttonStyle(.borderless)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(habit.name)
-                            Text("\(habit.duration) min • \(weekdayText(habit.weekdays))")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                    }.buttonStyle(.plain)
                     .swipeActions {
-                        Button("Delete", role: .destructive) { store.deleteHabit(habit) }
+                        Button("Delete",role:.destructive){store.deleteHabit(h)}
+                        Button(h.isEnabled ? "Pause":"Enable"){store.toggleHabit(h)}.tint(.orange)
                     }
                 }
-            }
-            .overlay {
-                if store.habits.isEmpty {
-                    ContentUnavailableView("No Habits", systemImage: "repeat", description: Text("Add recurring habits for selected weekdays."))
-                }
-            }
-            .navigationTitle("Habits")
-            .toolbar {
-                Button { showAdd = true } label: { Image(systemName: "plus") }
-            }
-            .sheet(isPresented: $showAdd) { AddHabitView() }
+            }.navigationTitle("Habits").toolbar{Button{editing=Habit(name:"")}label:{Image(systemName:"plus")}}
+            .sheet(item:$editing){HabitEditor(habit:$0)}
         }
-    }
-
-    private func weekdayText(_ days: Set<Int>) -> String {
-        let symbols = Calendar.current.shortWeekdaySymbols
-        return days.sorted().compactMap { i in
-            guard i >= 1, i <= symbols.count else { return nil }
-            return symbols[i - 1]
-        }.joined(separator: ", ")
     }
 }
 
-private struct AddHabitView: View {
-    @EnvironmentObject private var store: AppStore
+private struct HabitEditor:View {
+    @EnvironmentObject private var store:AppStore
     @Environment(\.dismiss) private var dismiss
-    @State private var name = ""
-    @State private var duration = 30
-    @State private var weekdays: Set<Int> = []
-
-    var body: some View {
+    @State var habit:Habit
+    var body:some View {
         NavigationStack {
             Form {
-                TextField("Habit name", text: $name)
-                Picker("Duration", selection: $duration) {
-                    ForEach([15, 30, 45, 60, 90], id: \.self) { value in
-                        Text("\(value) minutes").tag(value)
+                TextField("Habit name (e.g. Gym)",text:$habit.name)
+                Picker("Duration",selection:$habit.duration){ForEach([15,30,45,60,90],id:\.self){Text("\($0) min").tag($0)}}
+                Picker("Scheduling",selection:$habit.mode){ForEach(HabitScheduleMode.allCases){Text($0.rawValue).tag($0)}}
+                if habit.mode == .fixed {
+                    Section("Days") {
+                        ForEach(1...7,id:\.self){d in
+                            Toggle(Calendar.current.weekdaySymbols[d-1],isOn:Binding(
+                                get:{habit.weekdays.contains(d)},
+                                set:{v in if v{habit.weekdays.insert(d)}else{habit.weekdays.remove(d)}}))
+                        }
                     }
+                } else {
+                    Stepper("\(habit.timesPerWeek) times per week",value:$habit.timesPerWeek,in:1...7)
+                    Picker("Preferred period",selection:$habit.preferredPeriod){ForEach(PreferredPeriod.allCases){Text($0.rawValue).tag($0)}}
+                    Stepper("Earliest \(habit.earliestHour):00",value:$habit.earliestHour,in:0...22)
+                    Stepper("Latest \(habit.latestHour):00",value:$habit.latestHour,in:(habit.earliestHour+1)...23)
+                    Picker("Importance",selection:$habit.priority){ForEach(WorkPriority.allCases){Text($0.rawValue).tag($0)}}
                 }
-                Section("Repeat") {
-                    ForEach(1...7, id: \.self) { day in
-                        Toggle(Calendar.current.weekdaySymbols[day - 1], isOn: binding(for: day))
-                    }
-                }
-            }
-            .navigationTitle("New Habit")
+            }.navigationTitle(habit.name.isEmpty ? "New Habit":"Edit Habit")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        store.addHabit(name: name, duration: duration, weekdays: weekdays)
-                        dismiss()
-                    }
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || weekdays.isEmpty)
-                }
+                ToolbarItem(placement:.cancellationAction){Button("Cancel"){dismiss()}}
+                ToolbarItem(placement:.confirmationAction){Button("Save"){
+                    if store.habits.contains(where:{$0.id==habit.id}){store.updateHabit(habit)}else{store.addHabit(habit)}
+                    dismiss()
+                }.disabled(habit.name.isEmpty || (habit.mode == .fixed && habit.weekdays.isEmpty))}
             }
         }
-    }
-
-    private func binding(for day: Int) -> Binding<Bool> {
-        Binding(
-            get: { weekdays.contains(day) },
-            set: { enabled in
-                if enabled { weekdays.insert(day) } else { weekdays.remove(day) }
-            }
-        )
     }
 }

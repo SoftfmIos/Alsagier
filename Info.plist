@@ -7,12 +7,14 @@
     <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>4.3</string>
-    <key>CFBundleVersion</key><string>2</string>
+    <key>CFBundleShortVersionString</key><string>5.0</string>
+    <key>CFBundleVersion</key><string>3</string>
     <key>UILaunchScreen</key><dict/>
     <key>UISupportedInterfaceOrientations</key>
     <array><string>UIInterfaceOrientationPortrait</string></array>
     <key>NSCalendarsFullAccessUsageDescription</key><string>Alsagier reads your calendar to protect fixed appointments while planning your day.</string>
     <key>NSLocationWhenInUseUsageDescription</key><string>Alsagier uses your location to calculate local prayer times.</string>
+    <key>ITSAppUsesNonExemptEncryption</key><false/>
+    <key>NSSupportsLiveActivities</key><true/>
 </dict>
 </plist>

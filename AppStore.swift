@@ -183,6 +183,15 @@ final class AppStore: ObservableObject {
             guard block.kind == .travel || block.kind == .habit else { return nil }
             return block.sourceID
         })
+
+        // A task has one source ID for the whole task. If that task is already in the
+        // preserved part of today (for example it is currently running), do not let a
+        // refresh/re-open create the same task again a minute later.
+        let preservedTaskSources = Set(preserved.compactMap { block -> UUID? in
+            guard block.kind == .task else { return nil }
+            return block.sourceID
+        })
+
         let rebuildStart = scheduleFrom ?? moment
         let rebuilt = buildSchedule(calendar: calendar, prayers: prayers, from: rebuildStart)
             .filter { candidate in
@@ -191,6 +200,9 @@ final class AppStore: ObservableObject {
                 if let source = candidate.sourceID,
                    pairedHabitSources.contains(source),
                    candidate.kind == .travel || candidate.kind == .habit { return false }
+                if let source = candidate.sourceID,
+                   preservedTaskSources.contains(source),
+                   candidate.kind == .task { return false }
                 return true
             }
         dayPlans[di].blocks = (preserved + rebuilt).sorted {$0.start < $1.start}

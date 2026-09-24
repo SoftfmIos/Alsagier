@@ -19,6 +19,7 @@ final class AppStore: ObservableObject {
     init() {
         load()
         migrateV43IfNeeded()
+        migrateReservedGreenProjects()
         autoCloseExpiredDay()
     }
 
@@ -103,6 +104,14 @@ final class AppStore: ObservableObject {
         save()
     }
 
+    func reopenDay(calendar: [ScheduleBlock], prayers: [ScheduleBlock]) {
+        guard let i = todayIndex, Calendar.current.isDateInToday(dayPlans[i].date) else { return }
+        dayPlans[i].endedAt = nil
+        dayPlans[i].isFrozen = false
+        save()
+        rebalanceFuture(calendar: calendar, prayers: prayers, after: Date())
+    }
+
     func autoCloseExpiredDay() {
         let cal = Calendar.current
         let now = Date()
@@ -121,8 +130,12 @@ final class AppStore: ObservableObject {
     private func rebalanceFuture(calendar: [ScheduleBlock], prayers: [ScheduleBlock], after moment: Date = Date()) {
         guard let di = todayIndex, dayPlans[di].endedAt == nil else { return }
         let past = dayPlans[di].blocks.filter { $0.start < moment || $0.isCompleted || $0.isSkipped }
+        let closedSourceIDs = Set(past.filter {$0.isCompleted || $0.isSkipped}.compactMap(\.sourceID))
         let rebuilt = buildSchedule(calendar: calendar, prayers: prayers, from: moment)
-            .filter { candidate in !past.contains(where: {$0.id == candidate.id}) }
+            .filter { candidate in
+                !past.contains(where: {$0.id == candidate.id}) &&
+                (candidate.sourceID == nil || !closedSourceIDs.contains(candidate.sourceID!))
+            }
         dayPlans[di].blocks = (past + rebuilt).sorted {$0.start < $1.start}
         save()
     }
@@ -180,16 +193,27 @@ final class AppStore: ObservableObject {
             }
         }
 
+        func appendHabit(_ habit: Habit, preferred: Date, latest: Date, subtitle: String) {
+            let travel = max(0, habit.travelMinutes)
+            let total = travel + habit.duration
+            guard let reservedStart = slot(after: preferred, minutes: total, limit: latest, blocks: result) else { return }
+            let habitStart = reservedStart.addingTimeInterval(TimeInterval(travel * 60))
+            if travel > 0 {
+                result.append(ScheduleBlock(sourceID: habit.id, title: "Travel to \(habit.name)",
+                                            subtitle: "\(travel) min road time", start: reservedStart, end: habitStart,
+                                            kind: .travel, projectColor: nil, isLocked: false))
+            }
+            result.append(ScheduleBlock(sourceID: habit.id, title: habit.name, subtitle: subtitle,
+                                        start: habitStart, end: habitStart.addingTimeInterval(TimeInterval(habit.duration * 60)),
+                                        kind: .habit, projectColor: nil, isLocked: false))
+        }
+
         // Fixed habits.
         let weekday = cal.component(.weekday, from: day)
         for habit in habits.filter({$0.isEnabled && $0.mode == .fixed && $0.weekdays.contains(weekday)}) {
             let earliest = cal.date(bySettingHour: habit.earliestHour, minute: 0, second: 0, of: day) ?? start
             let latest = cal.date(bySettingHour: habit.latestHour, minute: 0, second: 0, of: day) ?? personalEnd
-            if let s = slot(after: max(start, earliest), minutes: habit.duration, limit: min(latest, personalEnd), blocks: result) {
-                result.append(ScheduleBlock(sourceID: habit.id, title: habit.name, subtitle: "Habit",
-                                            start: s, end: s.addingTimeInterval(TimeInterval(habit.duration*60)),
-                                            kind: .habit, projectColor: nil, isLocked: false))
-            }
+            appendHabit(habit, preferred: max(start, earliest), latest: min(latest, personalEnd), subtitle: "Habit")
         }
 
         // Flexible weekly habits. Schedule today when remaining sessions need available days.
@@ -206,12 +230,8 @@ final class AppStore: ObservableObject {
             let earliest = cal.date(bySettingHour: habit.earliestHour, minute: 0, second: 0, of: day) ?? start
             let latest = cal.date(bySettingHour: habit.latestHour, minute: 0, second: 0, of: day) ?? personalEnd
             let preferred = preferredStart(for: habit, day: day, fallback: max(start, earliest))
-            if let s = slot(after: max(preferred, earliest), minutes: habit.duration, limit: min(latest, personalEnd), blocks: result) {
-                result.append(ScheduleBlock(sourceID: habit.id, title: habit.name,
-                                            subtitle: "\(completed)/\(habit.timesPerWeek) completed this week",
-                                            start: s, end: s.addingTimeInterval(TimeInterval(habit.duration*60)),
-                                            kind: .habit, projectColor: nil, isLocked: false))
-            }
+            appendHabit(habit, preferred: max(preferred, earliest), latest: min(latest, personalEnd),
+                        subtitle: "\(completed)/\(habit.timesPerWeek) completed this week")
         }
 
         // Communication windows.
@@ -271,6 +291,15 @@ final class AppStore: ObservableObject {
         if let d=defaults.data(forKey:hKey), let x=try? dec.decode([Habit].self,from:d){habits=x}
         if let d=defaults.data(forKey:dKey), let x=try? dec.decode([DayPlan].self,from:d){dayPlans=x}
         if let d=defaults.data(forKey:sKey), let x=try? dec.decode(AppSettings.self,from:d){settings=x}
+    }
+
+    private func migrateReservedGreenProjects() {
+        var changed = false
+        for i in projects.indices where projects[i].color == .green {
+            projects[i].color = .blue
+            changed = true
+        }
+        if changed { save() }
     }
 
     // Preserve existing V4.3 data on first V5 launch.

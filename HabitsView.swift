@@ -12,7 +12,7 @@ struct HabitsView:View {
                             Image(systemName:"figure.run").foregroundStyle(.orange)
                             VStack(alignment:.leading) {
                                 Text(h.name)
-                                Text(h.mode == .fixed ? "\(h.duration)m • fixed days" : "\(h.duration)m • \(h.timesPerWeek)x/week • Alsagier chooses")
+                                Text(h.mode == .fixed ? "\(h.duration)m • fixed days" : "\(h.duration)m • \(h.timesPerWeek)x/week • Random")
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
@@ -39,6 +39,11 @@ private struct HabitEditor:View {
             Form {
                 TextField("Habit name (e.g. Gym)",text:$habit.name)
                 Picker("Duration",selection:$habit.duration){ForEach([15,30,45,60,90],id:\.self){Text("\($0) min").tag($0)}}
+                Picker("Road / travel time",selection:$habit.travelMinutes){
+                    Text("None").tag(0)
+                    Text("15 min").tag(15)
+                    Text("30 min").tag(30)
+                }
                 Picker("Scheduling",selection:$habit.mode){ForEach(HabitScheduleMode.allCases){Text($0.rawValue).tag($0)}}
                 if habit.mode == .fixed {
                     Section("Days") {

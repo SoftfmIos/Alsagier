@@ -2,8 +2,14 @@ import SwiftUI
 import Foundation
 
 enum ProjectColor: String, Codable, CaseIterable, Identifiable {
-    case blue, green, orange, purple, pink, teal, indigo, red
+    // green is retained only so existing V5 data can still decode. It is not selectable for projects.
+    case blue, green, orange, purple, pink, teal, indigo, red, cyan, brown, gold
     var id: String { rawValue }
+
+    static var projectChoices: [ProjectColor] {
+        [.blue, .orange, .purple, .pink, .teal, .indigo, .red, .cyan, .brown, .gold]
+    }
+
     var color: Color {
         switch self {
         case .blue: return .blue
@@ -14,6 +20,9 @@ enum ProjectColor: String, Codable, CaseIterable, Identifiable {
         case .teal: return .teal
         case .indigo: return .indigo
         case .red: return .red
+        case .cyan: return .cyan
+        case .brown: return .brown
+        case .gold: return Color(red: 0.72, green: 0.48, blue: 0.02)
         }
     }
 }
@@ -35,8 +44,17 @@ enum ProjectStatus: String, Codable, CaseIterable, Identifiable {
 }
 
 enum HabitScheduleMode: String, Codable, CaseIterable, Identifiable {
-    case fixed = "Fixed days", flexible = "Alsagier chooses"
+    case fixed = "Fixed days", flexible = "Random"
     var id: String { rawValue }
+
+    init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        switch value {
+        case "Fixed days": self = .fixed
+        case "Random", "Alsagier chooses": self = .flexible
+        default: self = .fixed
+        }
+    }
 }
 
 enum PreferredPeriod: String, Codable, CaseIterable, Identifiable {
@@ -45,12 +63,13 @@ enum PreferredPeriod: String, Codable, CaseIterable, Identifiable {
 }
 
 enum BlockKind: String, Codable {
-    case calendar, prayer, habit, project, task, calls, email
+    case calendar, prayer, habit, travel, project, task, calls, email
     var icon: String {
         switch self {
         case .calendar: return "calendar"
         case .prayer: return "moon.stars.fill"
         case .habit: return "figure.run"
+        case .travel: return "car.fill"
         case .project: return "folder.fill"
         case .task: return "checkmark.circle"
         case .calls: return "phone.fill"
@@ -62,6 +81,7 @@ enum BlockKind: String, Codable {
         case .calendar: return .gray
         case .prayer: return .green
         case .habit: return .orange
+        case .travel: return .gray
         case .project, .task: return .blue
         case .calls: return .purple
         case .email: return .teal
@@ -102,6 +122,39 @@ struct Habit: Identifiable, Codable, Equatable {
     var preferredPeriod: PreferredPeriod = .anytime
     var priority: WorkPriority = .normal
     var isEnabled = true
+    var travelMinutes: Int = 0
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, duration, mode, weekdays, timesPerWeek, earliestHour, latestHour
+        case preferredPeriod, priority, isEnabled, travelMinutes
+    }
+
+    init(id: UUID = UUID(), name: String, duration: Int = 30, mode: HabitScheduleMode = .fixed,
+         weekdays: Set<Int> = [], timesPerWeek: Int = 3, earliestHour: Int = 6, latestHour: Int = 23,
+         preferredPeriod: PreferredPeriod = .anytime, priority: WorkPriority = .normal,
+         isEnabled: Bool = true, travelMinutes: Int? = nil) {
+        self.id=id; self.name=name; self.duration=duration; self.mode=mode; self.weekdays=weekdays
+        self.timesPerWeek=timesPerWeek; self.earliestHour=earliestHour; self.latestHour=latestHour
+        self.preferredPeriod=preferredPeriod; self.priority=priority; self.isEnabled=isEnabled
+        self.travelMinutes = travelMinutes ?? (name.localizedCaseInsensitiveContains("gym") ? 30 : 0)
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey:.id) ?? UUID()
+        name = try c.decode(String.self, forKey:.name)
+        duration = try c.decodeIfPresent(Int.self, forKey:.duration) ?? 30
+        mode = try c.decodeIfPresent(HabitScheduleMode.self, forKey:.mode) ?? .fixed
+        weekdays = try c.decodeIfPresent(Set<Int>.self, forKey:.weekdays) ?? []
+        timesPerWeek = try c.decodeIfPresent(Int.self, forKey:.timesPerWeek) ?? 3
+        earliestHour = try c.decodeIfPresent(Int.self, forKey:.earliestHour) ?? 6
+        latestHour = try c.decodeIfPresent(Int.self, forKey:.latestHour) ?? 23
+        preferredPeriod = try c.decodeIfPresent(PreferredPeriod.self, forKey:.preferredPeriod) ?? .anytime
+        priority = try c.decodeIfPresent(WorkPriority.self, forKey:.priority) ?? .normal
+        isEnabled = try c.decodeIfPresent(Bool.self, forKey:.isEnabled) ?? true
+        travelMinutes = try c.decodeIfPresent(Int.self, forKey:.travelMinutes)
+            ?? (name.localizedCaseInsensitiveContains("gym") ? 30 : 0)
+    }
 }
 
 struct ScheduleBlock: Identifiable, Codable, Equatable {

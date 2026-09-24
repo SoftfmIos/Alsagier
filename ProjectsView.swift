@@ -46,7 +46,7 @@ private struct ProjectEditor: View {
                 if project.mode == .continuous {
                     Picker("Focus block",selection:$project.preferredBlockMinutes){ForEach([15,30,45,60,90],id:\.self){Text("\($0) min").tag($0)}}
                 }
-                Picker("Color",selection:$project.color){ForEach(ProjectColor.allCases){Text($0.rawValue.capitalized).tag($0)}}
+                Picker("Color",selection:$project.color){ForEach(ProjectColor.projectChoices){Text($0.rawValue.capitalized).foregroundStyle($0.color).tag($0)}}
             }.navigationTitle(project.name.isEmpty ? "New Project":"Edit Project")
             .toolbar {
                 ToolbarItem(placement:.cancellationAction){Button("Cancel"){dismiss()}}

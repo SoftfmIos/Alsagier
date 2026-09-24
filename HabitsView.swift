@@ -1,3 +1,60 @@
 import SwiftUI
-struct HabitsView:View{@EnvironmentObject var s:AppStore;@State var add=false;var body:some View{NavigationStack{List{ForEach(s.habits){h in VStack(alignment:.leading){Text(h.name);Text("\(h.durationMinutes) min").font(.caption)}}.onDelete{for i in $0{s.deleteHabit(s.habits[i])}}}.navigationTitle("Habits").toolbar{Button{add=true}label:{Image(systemName:"plus")}}.sheet(isPresented:$add){AddHabit()}}}}
-struct AddHabit:View{@EnvironmentObject var s:AppStore;@Environment(\.dismiss)var dismiss;@State var n="";@State var d=30;@State var days:Set<Int>=[1,2,3,4,5,6,7];let names=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];var body:some View{NavigationStack{Form{TextField("Habit",text:$n);Picker("Duration",selection:$d){ForEach([15,30,45,60,90],id:\.self){Text("\($0) minutes")}};Section("Days"){ForEach(1...7,id:\.self){x in Toggle(names[x-1],isOn:Binding(get:{days.contains(x)},set:{$0 ? days.insert(x):days.remove(x)}))}}}.navigationTitle("New Habit").toolbar{ToolbarItem(placement:.cancellationAction){Button("Cancel"){dismiss()}};ToolbarItem(placement:.confirmationAction){Button("Add"){s.addHabit(n,d,days);dismiss()}.disabled(n.isEmpty||days.isEmpty)}}}}}
+
+struct HabitsView: View {
+    @EnvironmentObject var store: AppStore
+    @State private var name = ""
+    @State private var duration = 30
+    @State private var days: Set<Int> = [1,2,3,4,5,6,7]
+
+    private let labels = [(1,"Sun"),(2,"Mon"),(3,"Tue"),(4,"Wed"),(5,"Thu"),(6,"Fri"),(7,"Sat")]
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Add Habit") {
+                    TextField("Habit name", text: $name)
+                    Picker("Duration", selection: $duration) {
+                        ForEach([15,30,45,60,90], id: \.self) { Text("\($0) min").tag($0) }
+                    }
+                    ForEach(labels, id: \.0) { day, label in
+                        Toggle(label, isOn: Binding(
+                            get: { days.contains(day) },
+                            set: { enabled in
+                                if enabled {
+                                    days.insert(day)
+                                } else {
+                                    days.remove(day)
+                                }
+                            }
+                        ))
+                    }
+                    Button("Add Habit") {
+                        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !clean.isEmpty else { return }
+                        store.addHabit(Habit(name: clean, duration: duration, weekdays: days))
+                        name = ""
+                    }
+                }
+
+                Section("Habits") {
+                    if store.habits.isEmpty {
+                        Text("No habits yet.").foregroundStyle(.secondary)
+                    }
+                    ForEach(store.habits) { habit in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(habit.name)
+                                Text("\(habit.duration) min").font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button(role: .destructive) { store.deleteHabit(habit) } label: {
+                                Image(systemName: "trash")
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Habits")
+        }
+    }
+}

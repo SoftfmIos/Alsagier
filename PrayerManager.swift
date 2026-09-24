@@ -1,13 +1,103 @@
 import Foundation
+import Combine
 import CoreLocation
-@MainActor final class PrayerManager:NSObject,ObservableObject,CLLocationManagerDelegate {
- let lm=CLLocationManager();@Published var blocks:[ScheduleBlock]=[]
- override init(){super.init();lm.delegate=self}
- func request(){lm.requestWhenInUseAuthorization();lm.requestLocation()}
- func locationManager(_ manager:CLLocationManager,didFailWithError error:Error){}
- func locationManagerDidChangeAuthorization(_ manager:CLLocationManager){if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways{manager.requestLocation()}}
- func locationManager(_ manager:CLLocationManager,didUpdateLocations locations:[CLLocation]){guard let l=locations.last else{return};Task{await fetch(l.coordinate.latitude,l.coordinate.longitude)}}
- struct R:Decodable{struct D:Decodable{struct T:Decodable{let Fajr,Dhuhr,Asr,Maghrib,Isha:String};let timings:T};let data:D}
- func fetch(_ lat:Double,_ lon:Double) async {var u=URLComponents(string:"https://api.aladhan.com/v1/timings")!;u.queryItems=[.init(name:"latitude",value:"\(lat)"),.init(name:"longitude",value:"\(lon)"),.init(name:"method",value:"4")];guard let (d,_)=try? await URLSession.shared.data(from:u.url!),let r=try? JSONDecoder().decode(R.self,from:d) else{return};let t=r.data.timings;blocks=[("Fajr",t.Fajr),("Dhuhr",t.Dhuhr),("Asr",t.Asr),("Maghrib",t.Maghrib),("Isha",t.Isha)].compactMap{n,v in guard let s=v.split(separator:" ").first,let date=parse(String(s)) else{return nil};return ScheduleBlock(title:"\(n) Prayer",start:date.addingTimeInterval(-600),end:date.addingTimeInterval(1200),kind:.prayer,projectID:nil,sourceID:nil,locked:true)}}
- func parse(_ s:String)->Date?{let p=s.split(separator:":").compactMap{Int($0)};guard p.count>1 else{return nil};return Calendar.current.date(bySettingHour:p[0],minute:p[1],second:0,of:Date())}
+
+@MainActor
+final class PrayerManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+    @Published var blocks: [ScheduleBlock] = []
+    @Published var status = "Not loaded"
+
+    private let manager = CLLocationManager()
+
+    override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyKilometer
+    }
+
+    func request() {
+        status = "Loading"
+        manager.requestWhenInUseAuthorization()
+        manager.requestLocation()
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            manager.requestLocation()
+        case .denied, .restricted:
+            status = "Location not allowed"
+        default:
+            break
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let loc = locations.last else { return }
+        Task { await fetch(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude) }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        status = "Location error"
+    }
+
+    private func fetch(latitude: Double, longitude: Double) async {
+        var components = URLComponents(string: "https://api.aladhan.com/v1/timings")!
+        components.queryItems = [
+            URLQueryItem(name: "latitude", value: String(latitude)),
+            URLQueryItem(name: "longitude", value: String(longitude)),
+            URLQueryItem(name: "method", value: "4")
+        ]
+        guard let url = components.url else { status = "Prayer URL error"; return }
+
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let response = try JSONDecoder().decode(AladhanResponse.self, from: data)
+            let names: [(String, String)] = [
+                ("Fajr", response.data.timings.Fajr),
+                ("Dhuhr", response.data.timings.Dhuhr),
+                ("Asr", response.data.timings.Asr),
+                ("Maghrib", response.data.timings.Maghrib),
+                ("Isha", response.data.timings.Isha)
+            ]
+            let cal = Calendar.current
+            let day = cal.startOfDay(for: Date())
+            var result: [ScheduleBlock] = []
+
+            for (name, raw) in names {
+                let time = raw.prefix(5)
+                let parts = time.split(separator: ":").compactMap { Int($0) }
+                guard parts.count == 2,
+                      let prayer = cal.date(bySettingHour: parts[0], minute: parts[1], second: 0, of: day)
+                else { continue }
+
+                result.append(ScheduleBlock(
+                    title: "\(name) Prayer",
+                    start: prayer.addingTimeInterval(-10 * 60),
+                    end: prayer.addingTimeInterval(20 * 60),
+                    kind: .prayer,
+                    color: .prayer,
+                    isLocked: true
+                ))
+            }
+            blocks = result.sorted { $0.start < $1.start }
+            status = "Loaded"
+        } catch {
+            status = "Prayer data error"
+        }
+    }
+}
+
+private struct AladhanResponse: Decodable {
+    let data: AladhanData
+}
+private struct AladhanData: Decodable {
+    let timings: AladhanTimings
+}
+private struct AladhanTimings: Decodable {
+    let Fajr: String
+    let Dhuhr: String
+    let Asr: String
+    let Maghrib: String
+    let Isha: String
 }

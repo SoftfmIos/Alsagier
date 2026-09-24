@@ -9,6 +9,7 @@ struct TodayView: View {
     @State private var starting = false
     @State private var history = false
     @State private var confirmEnd = false
+    @State private var refreshing = false
 
     var body: some View {
         NavigationStack {
@@ -64,17 +65,30 @@ struct TodayView: View {
     }
 
     private var dayControls: some View {
-        Group {
+        VStack(spacing:8) {
             if store.todayPlan == nil {
                 Button { Task { await startDay() } } label: {
                     Label(starting ? "Planning…" : "Start My Day", systemImage:"play.fill").frame(maxWidth:.infinity)
                 }.buttonStyle(.borderedProminent).disabled(starting)
             } else if store.isDayActive {
+                HStack {
+                    Button { Task { await refreshMyDay() } } label: {
+                        Label(refreshing ? "Refreshing…" : "Refresh My Day", systemImage:"arrow.clockwise")
+                            .frame(maxWidth:.infinity)
+                    }.buttonStyle(.bordered).disabled(refreshing)
+                    Button { Task { await late15() } } label: {
+                        Label("I'm 15m Late", systemImage:"clock.badge.exclamationmark")
+                            .frame(maxWidth:.infinity)
+                    }.buttonStyle(.bordered)
+                }
                 Button(role:.destructive) { confirmEnd=true } label: {
                     Label("End My Day",systemImage:"stop.fill").frame(maxWidth:.infinity)
                 }.buttonStyle(.borderedProminent)
             } else {
-                Button { Task { await reopenDay() } } label: {
+                Button {
+                    store.reopenDay() // immediate state/UI change
+                    Task { await refreshMyDay() }
+                } label: {
                     Label("Re-open My Day",systemImage:"arrow.counterclockwise").frame(maxWidth:.infinity)
                 }.buttonStyle(.borderedProminent)
             }
@@ -165,10 +179,21 @@ struct TodayView: View {
         starting=false
     }
 
-    private func reopenDay() async {
+    private func refreshMyDay() async {
+        guard store.isDayActive else { return }
+        refreshing = true
         calendar.loadToday()
         await prayers.refresh()
-        store.reopenDay(calendar:calendar.todayBlocks,prayers:prayers.blocks)
+        store.refreshToday(calendar:calendar.todayBlocks,prayers:prayers.blocks)
+        await refreshAfterScheduleChange()
+        refreshing = false
+    }
+
+    private func late15() async {
+        guard store.isDayActive else { return }
+        calendar.loadToday()
+        await prayers.refresh()
+        store.runningLate15(calendar:calendar.todayBlocks,prayers:prayers.blocks)
         await refreshAfterScheduleChange()
     }
 
@@ -224,26 +249,50 @@ struct TodayView: View {
 private struct TimelineCard: View {
     let block:ScheduleBlock
     var body:some View {
-        HStack(spacing:12) {
-            RoundedRectangle(cornerRadius:4).fill(block.color).frame(width:6)
-            VStack(alignment:.leading,spacing:4) {
-                HStack {
-                    Image(systemName:block.kind.icon).foregroundStyle(block.color)
+        if block.kind == .travel {
+            HStack(alignment:.top, spacing:8) {
+                Image(systemName:"car.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(width:18)
+                VStack(alignment:.leading,spacing:1) {
                     Text(block.title)
-                        .font(.headline)
-                        .foregroundStyle(block.projectColor?.color ?? (block.kind == .prayer ? .green : .primary))
-                    if block.isLocked { Image(systemName:"lock.fill").font(.caption).foregroundStyle(.secondary) }
-                    if block.isCompleted { Image(systemName:"checkmark.circle.fill").foregroundStyle(.green) }
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Text("\(block.start.formatted(date:.omitted,time:.shortened)) – \(block.end.formatted(date:.omitted,time:.shortened))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
-                if let sub=block.subtitle { Text(sub).font(.subheadline) }
-                Text("\(block.start.formatted(date:.omitted,time:.shortened)) – \(block.end.formatted(date:.omitted,time:.shortened))")
-                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                if block.isCompleted { Image(systemName:"checkmark.circle.fill").font(.caption).foregroundStyle(.green) }
             }
-            Spacer()
-        }.padding()
-        .background(block.kind == .prayer ? Color.green.opacity(0.13) : block.color.opacity(0.08),
-                    in:RoundedRectangle(cornerRadius:15))
-        .opacity(block.isSkipped ? 0.45 : (block.isCompleted ? 0.60 : 1))
+            .padding(.horizontal,12)
+            .padding(.vertical,5)
+            .background(Color.clear) // travel is reserved time, not a work brick
+            .opacity(block.isSkipped ? 0.45 : (block.isCompleted ? 0.60 : 1))
+        } else {
+            HStack(spacing:12) {
+                RoundedRectangle(cornerRadius:4).fill(block.color).frame(width:6)
+                VStack(alignment:.leading,spacing:4) {
+                    HStack {
+                        Image(systemName:block.kind.icon).foregroundStyle(block.color)
+                        Text(block.title)
+                            .font(.headline)
+                            .foregroundStyle(block.projectColor?.color ?? (block.kind == .prayer ? .green : .primary))
+                        if block.isLocked { Image(systemName:"lock.fill").font(.caption).foregroundStyle(.secondary) }
+                        if block.isCompleted { Image(systemName:"checkmark.circle.fill").foregroundStyle(.green) }
+                    }
+                    if let sub=block.subtitle { Text(sub).font(.subheadline) }
+                    Text("\(block.start.formatted(date:.omitted,time:.shortened)) – \(block.end.formatted(date:.omitted,time:.shortened))")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }.padding()
+            .background(block.kind == .prayer ? Color.green.opacity(0.13) : block.color.opacity(0.08),
+                        in:RoundedRectangle(cornerRadius:15))
+            .opacity(block.isSkipped ? 0.45 : (block.isCompleted ? 0.60 : 1))
+        }
     }
 }
 

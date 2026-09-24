@@ -5,6 +5,8 @@ struct MoreView:View {
     @EnvironmentObject private var calendar:CalendarManager
     @EnvironmentObject private var notifications:NotificationManager
     @State private var draft=AppSettings()
+    @State private var confirmClearHistory=false
+    @State private var confirmReset=false
 
     var body:some View {
         NavigationStack {
@@ -26,10 +28,38 @@ struct MoreView:View {
                     Label(calendar.authorized ? "Calendar connected":"Calendar permission needed",systemImage:"calendar")
                     Label(notifications.authorized ? "Notifications enabled":"Notifications permission needed",systemImage:"bell")
                 }
-                Section("About") { Text("Alsagier By Softfm"); Text("Version 5.0").foregroundStyle(.secondary) }
+                Section("Data") {
+                    Button("Clear Schedule History", role:.destructive) { confirmClearHistory=true }
+                    Button("Reset Alsagier", role:.destructive) { confirmReset=true }
+                    Text("These actions never delete or change events in your iPhone Calendar.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Section("About") {
+                    Text("Alsagier By Softfm")
+                    Text("Version 5.1 • Build 5").foregroundStyle(.secondary)
+                }
             }.navigationTitle("More")
             .onAppear{draft=store.settings}
             .onChange(of:draft){_,new in store.updateSettings(new)}
+            .confirmationDialog("Clear schedule history?",isPresented:$confirmClearHistory,titleVisibility:.visible) {
+                Button("Clear Schedule History",role:.destructive){store.clearScheduleHistory()}
+                Button("Cancel",role:.cancel){}
+            } message: {
+                Text("Past day plans will be deleted. Projects, Tasks, Habits and Settings stay.")
+            }
+            .confirmationDialog("Reset Alsagier?",isPresented:$confirmReset,titleVisibility:.visible) {
+                Button("Reset All Alsagier Data",role:.destructive){
+                    store.resetAllData()
+                    draft=store.settings
+                    Task {
+                        await notifications.refresh(for:[],minutesBefore:0)
+                        await LiveActivityManager.shared.end()
+                    }
+                }
+                Button("Cancel",role:.cancel){}
+            } message: {
+                Text("Deletes Alsagier Projects, Tasks, Habits, schedules and settings. Your iPhone Calendar is not changed.")
+            }
         }
     }
     private func time(_ hour:Int)->String {

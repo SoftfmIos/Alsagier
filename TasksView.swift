@@ -37,7 +37,9 @@ private struct AddTaskView:View {
                 Picker("Duration",selection:$duration){ForEach([15,30,45,60,90],id:\.self){Text("\($0) min").tag($0)}}
                 Picker("Project",selection:$projectID){
                     Text("None").tag(Optional<UUID>.none)
-                    ForEach(store.projects.filter{$0.status != .closed}){Text($0.name).tag(Optional($0.id))}
+                    ForEach(store.projects.filter{$0.status != .closed}){ p in
+                        Text(p.name).foregroundStyle(p.color.color).tag(Optional(p.id))
+                    }
                 }
                 Picker("Priority",selection:$priority){ForEach(WorkPriority.allCases){Text($0.rawValue).tag($0)}}
             }.navigationTitle("New Task")

@@ -22,18 +22,21 @@ final class LiveActivityManager {
             AlsagierActivityAttributes.RemainingItem(
                 title: $0.title,
                 time: $0.start,
-                colorName: colorName(for: $0)
+                colorName: colorName(for: $0),
+                kindName: $0.kind.rawValue
             )
         }
 
         let state = AlsagierActivityAttributes.ContentState(
             title: primary.title,
             subtitle: primary.subtitle ?? "",
+            start: primary.start,
             end: current == nil ? primary.start : primary.end,
             isUpcoming: current == nil,
             remaining: visible,
             remainingCount: upcoming.count,
-            colorName: colorName(for: primary)
+            colorName: colorName(for: primary),
+            kindName: primary.kind.rawValue
         )
         let content = ActivityContent(state: state, staleDate: state.end)
 

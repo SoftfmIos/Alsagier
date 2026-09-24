@@ -15,6 +15,7 @@ final class AppStore: ObservableObject {
     private let hKey = "alsagier.v5.habits"
     private let dKey = "alsagier.v5.dayplans"
     private let sKey = "alsagier.v5.settings"
+    private let migrationKey = "alsagier.v5.migratedV43"
 
     init() {
         load()
@@ -99,17 +100,49 @@ final class AppStore: ObservableObject {
 
     func endDay() {
         guard let i = todayIndex, dayPlans[i].endedAt == nil else { return }
-        dayPlans[i].endedAt = Date()
-        dayPlans[i].isFrozen = true
+        var plan = dayPlans[i]
+        plan.endedAt = Date()
+        plan.isFrozen = true
+        dayPlans[i] = plan
         save()
     }
 
-    func reopenDay(calendar: [ScheduleBlock], prayers: [ScheduleBlock]) {
+    // Re-open is intentionally state-only so the UI changes immediately.
+    // TodayView refreshes Calendar/prayers and then calls refreshToday.
+    func reopenDay() {
         guard let i = todayIndex, Calendar.current.isDateInToday(dayPlans[i].date) else { return }
-        dayPlans[i].endedAt = nil
-        dayPlans[i].isFrozen = false
+        var plan = dayPlans[i]
+        plan.endedAt = nil
+        plan.isFrozen = false
+        dayPlans[i] = plan
         save()
+    }
+
+    func refreshToday(calendar: [ScheduleBlock], prayers: [ScheduleBlock]) {
+        guard isDayActive else { return }
         rebalanceFuture(calendar: calendar, prayers: prayers, after: Date())
+    }
+
+    func runningLate15(calendar: [ScheduleBlock], prayers: [ScheduleBlock]) {
+        guard isDayActive else { return }
+        let now = Date()
+        rebalanceFuture(calendar: calendar, prayers: prayers,
+                        after: now, scheduleFrom: now.addingTimeInterval(15 * 60))
+    }
+
+    func clearScheduleHistory() {
+        dayPlans.removeAll { !Calendar.current.isDateInToday($0.date) }
+        save()
+    }
+
+    func resetAllData() {
+        projects = []
+        tasks = []
+        habits = []
+        dayPlans = []
+        settings = AppSettings()
+        defaults.set(true, forKey: migrationKey) // never resurrect V4.3 test data after reset
+        save()
     }
 
     func autoCloseExpiredDay() {
@@ -127,16 +160,40 @@ final class AppStore: ObservableObject {
 
     func updateSettings(_ newValue: AppSettings) { settings = newValue; save() }
 
-    private func rebalanceFuture(calendar: [ScheduleBlock], prayers: [ScheduleBlock], after moment: Date = Date()) {
+    private func rebalanceFuture(calendar: [ScheduleBlock], prayers: [ScheduleBlock],
+                                 after moment: Date = Date(), scheduleFrom: Date? = nil) {
         guard let di = todayIndex, dayPlans[di].endedAt == nil else { return }
-        let past = dayPlans[di].blocks.filter { $0.start < moment || $0.isCompleted || $0.isSkipped }
-        let closedSourceIDs = Set(past.filter {$0.isCompleted || $0.isSkipped}.compactMap(\.sourceID))
-        let rebuilt = buildSchedule(calendar: calendar, prayers: prayers, from: moment)
+        let existing = dayPlans[di].blocks
+
+        // Preserve anything already started/closed. If travel or its habit has started,
+        // preserve the whole travel+habit pair so a refresh/re-open can never add travel twice.
+        var preserved = existing.filter { $0.start < moment || $0.isCompleted || $0.isSkipped }
+        let activeHabitSources = Set(preserved.compactMap { block -> UUID? in
+            guard block.kind == .travel || block.kind == .habit else { return nil }
+            return block.sourceID
+        })
+        preserved += existing.filter { block in
+            guard let source = block.sourceID, activeHabitSources.contains(source) else { return false }
+            return (block.kind == .travel || block.kind == .habit) &&
+                   !preserved.contains(where: { $0.id == block.id })
+        }
+
+        let closedSourceIDs = Set(preserved.filter {$0.isCompleted || $0.isSkipped}.compactMap(\.sourceID))
+        let pairedHabitSources = Set(preserved.compactMap { block -> UUID? in
+            guard block.kind == .travel || block.kind == .habit else { return nil }
+            return block.sourceID
+        })
+        let rebuildStart = scheduleFrom ?? moment
+        let rebuilt = buildSchedule(calendar: calendar, prayers: prayers, from: rebuildStart)
             .filter { candidate in
-                !past.contains(where: {$0.id == candidate.id}) &&
-                (candidate.sourceID == nil || !closedSourceIDs.contains(candidate.sourceID!))
+                if preserved.contains(where: {$0.id == candidate.id}) { return false }
+                if let source = candidate.sourceID, closedSourceIDs.contains(source) { return false }
+                if let source = candidate.sourceID,
+                   pairedHabitSources.contains(source),
+                   candidate.kind == .travel || candidate.kind == .habit { return false }
+                return true
             }
-        dayPlans[di].blocks = (past + rebuilt).sorted {$0.start < $1.start}
+        dayPlans[di].blocks = (preserved + rebuilt).sorted {$0.start < $1.start}
         save()
     }
 
@@ -304,7 +361,11 @@ final class AppStore: ObservableObject {
 
     // Preserve existing V4.3 data on first V5 launch.
     private func migrateV43IfNeeded() {
-        guard projects.isEmpty && tasks.isEmpty && habits.isEmpty else { return }
+        guard !defaults.bool(forKey: migrationKey) else { return }
+        guard projects.isEmpty && tasks.isEmpty && habits.isEmpty else {
+            defaults.set(true, forKey: migrationKey)
+            return
+        }
         struct OldProject: Codable { var id:UUID; var name:String; var dailyMinutes:Int; var color:ProjectColor; var isClosed:Bool }
         struct OldTask: Codable { var id:UUID; var title:String; var duration:Int; var projectID:UUID?; var priority:String; var isCompleted:Bool; var createdAt:Date }
         struct OldHabit: Codable { var id:UUID; var name:String; var duration:Int; var weekdays:Set<Int>; var isEnabled:Bool }
@@ -318,6 +379,7 @@ final class AppStore: ObservableObject {
         if let d=defaults.data(forKey:"alsagier.v43.habits"), let old=try? dec.decode([OldHabit].self,from:d) {
             habits=old.map{Habit(id:$0.id,name:$0.name,duration:$0.duration,mode:.fixed,weekdays:$0.weekdays,isEnabled:$0.isEnabled)}
         }
+        defaults.set(true, forKey: migrationKey)
         save()
     }
 }

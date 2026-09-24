@@ -38,7 +38,7 @@ private struct ProjectEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Project name",text:$project.name)
+                TextField("Project name",text:$project.name).foregroundStyle(project.color.color)
                 Picker("Status",selection:$project.status){ForEach(ProjectStatus.allCases){Text($0.rawValue).tag($0)}}
                 Picker("Priority",selection:$project.priority){ForEach(WorkPriority.allCases){Text($0.rawValue).tag($0)}}
                 Picker("Mode",selection:$project.mode){ForEach(ProjectMode.allCases){Text($0.rawValue).tag($0)}}

@@ -4,6 +4,8 @@ options:
 settings:
   base:
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    MARKETING_VERSION: "5.0"
+    CURRENT_PROJECT_VERSION: "3"
 targets:
   Alsagier:
     type: application

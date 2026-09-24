@@ -1,0 +1,269 @@
+import SwiftUI
+
+struct TodayView: View {
+    @EnvironmentObject private var store: AppStore
+    @EnvironmentObject private var calendar: CalendarManager
+    @EnvironmentObject private var notifications: NotificationManager
+    @EnvironmentObject private var prayers: PrayerManager
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var starting = false
+    @State private var history = false
+    @State private var confirmEnd = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing:14) {
+                    whatNow
+                    dayControls
+                    summary
+                    timeline
+                }.padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Today")
+            .toolbar { Button { history=true } label: { Image(systemName:"clock.arrow.circlepath") } }
+            .sheet(isPresented:$history) { HistoryView() }
+            .confirmationDialog("End your workday?", isPresented:$confirmEnd, titleVisibility:.visible) {
+                Button("End My Day", role:.destructive) { endDay() }
+                Button("Cancel", role:.cancel) {}
+            } message: {
+                Text("Your progress will be saved. You can reopen today if you need to continue.")
+            }
+            .task { await refreshLiveActivity() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { await refreshLiveActivity() } }
+            }
+        }
+    }
+
+    private var blocks: [ScheduleBlock] { store.todayPlan?.blocks ?? [] }
+
+    private var whatNow: some View {
+        let now=Date()
+        let current=blocks.first {$0.start <= now && $0.end > now && !$0.isCompleted && !$0.isSkipped}
+        let next=blocks.first {$0.start > now && !$0.isCompleted && !$0.isSkipped}
+        return VStack(alignment:.leading,spacing:8) {
+            Text("WHAT NOW?").font(.caption.bold()).foregroundStyle(.secondary)
+            if let b=current {
+                Text(b.title).font(.title2.bold()).foregroundStyle(b.color)
+                if let sub=b.subtitle { Text(sub).font(.headline) }
+                Text("Until \(b.end.formatted(date:.omitted,time:.shortened))").foregroundStyle(.secondary)
+            } else if let n=next {
+                Text("Free right now").font(.title2.bold())
+                Text("Next: \(n.title) • \(n.start.formatted(date:.omitted,time:.shortened))")
+                    .foregroundStyle(n.projectColor?.color ?? .secondary)
+            } else {
+                Text(store.todayPlan == nil ? "Start your day when you're ready" : "Today's planned blocks are complete")
+                    .font(.headline)
+            }
+        }
+        .frame(maxWidth:.infinity,alignment:.leading)
+        .padding()
+        .background(.background,in:RoundedRectangle(cornerRadius:18))
+    }
+
+    private var dayControls: some View {
+        Group {
+            if store.todayPlan == nil {
+                Button { Task { await startDay() } } label: {
+                    Label(starting ? "Planning…" : "Start My Day", systemImage:"play.fill").frame(maxWidth:.infinity)
+                }.buttonStyle(.borderedProminent).disabled(starting)
+            } else if store.isDayActive {
+                Button(role:.destructive) { confirmEnd=true } label: {
+                    Label("End My Day",systemImage:"stop.fill").frame(maxWidth:.infinity)
+                }.buttonStyle(.borderedProminent)
+            } else {
+                Button { Task { await reopenDay() } } label: {
+                    Label("Re-open My Day",systemImage:"arrow.counterclockwise").frame(maxWidth:.infinity)
+                }.buttonStyle(.borderedProminent)
+            }
+        }
+    }
+
+    private var summary: some View {
+        let calendarBlocks=blocks.filter {$0.kind == .calendar}
+        let focusBlocks=blocks.filter {[BlockKind.task,.project].contains($0.kind)}
+        let habitBlocks=blocks.filter {$0.kind == .habit}
+        let travelBlocks=blocks.filter {$0.kind == .travel}
+        let counted=calendarBlocks.count + focusBlocks.count + habitBlocks.count
+        let totalMinutes=(calendarBlocks+focusBlocks+habitBlocks+travelBlocks).reduce(0) {$0+$1.durationMinutes}
+
+        return VStack(spacing:10) {
+            HStack {
+                metric("Calendar", calendarBlocks.count, calendarBlocks.reduce(0){$0+$1.durationMinutes}, "events")
+                Spacer()
+                metric("Focus", focusBlocks.count, focusBlocks.reduce(0){$0+$1.durationMinutes}, "blocks")
+                Spacer()
+                metric("Habits", habitBlocks.count, habitBlocks.reduce(0){$0+$1.durationMinutes}, "habits")
+            }
+            Divider()
+            HStack {
+                Text("Total").font(.caption.bold())
+                Spacer()
+                Text("\(counted) items").font(.subheadline.bold())
+                Text("• \(durationText(totalMinutes))").font(.subheadline.bold())
+            }
+            if !travelBlocks.isEmpty {
+                HStack {
+                    Image(systemName:"car.fill")
+                    Text("Road time")
+                    Spacer()
+                    Text(durationText(travelBlocks.reduce(0){$0+$1.durationMinutes}))
+                }.font(.caption).foregroundStyle(.secondary)
+            }
+        }.padding().background(.background,in:RoundedRectangle(cornerRadius:16))
+    }
+
+    private func metric(_ label:String,_ count:Int,_ minutes:Int,_ noun:String) -> some View {
+        VStack(alignment:.leading,spacing:2) {
+            Text("\(count) \(noun)").font(.headline)
+            Text(durationText(minutes)).font(.subheadline)
+            Text(label).font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private func durationText(_ minutes:Int) -> String {
+        if minutes < 60 { return "\(minutes)m" }
+        return minutes % 60 == 0 ? "\(minutes/60)h" : "\(minutes/60)h \(minutes%60)m"
+    }
+
+    @ViewBuilder private var timeline: some View {
+        if blocks.isEmpty {
+            ContentUnavailableView("No schedule yet",systemImage:"calendar.day.timeline.left",
+                description:Text("Alsagier plans around Calendar, prayer, projects, tasks and habits."))
+        } else {
+            LazyVStack(spacing:9) {
+                ForEach(blocks) { b in
+                    TimelineCard(block:b)
+                        .swipeActions(edge:.leading,allowsFullSwipe:true) {
+                            if canClose(b) && !b.isCompleted && !b.isSkipped {
+                                Button("Close") { close(b) }.tint(.green)
+                            }
+                        }
+                        .swipeActions {
+                            if !b.isLocked && !b.isCompleted && !b.isSkipped {
+                                Button("+15") { extend(b) }.tint(.blue)
+                                Button("Skip") { skip(b) }.tint(.orange)
+                            }
+                        }
+                }
+            }
+        }
+    }
+
+    private func canClose(_ block:ScheduleBlock) -> Bool {
+        block.kind != .prayer
+    }
+
+    private func startDay() async {
+        starting=true
+        calendar.loadToday()
+        await prayers.refresh()
+        store.startDay(calendar:calendar.todayBlocks,prayers:prayers.blocks)
+        await refreshAfterScheduleChange()
+        starting=false
+    }
+
+    private func reopenDay() async {
+        calendar.loadToday()
+        await prayers.refresh()
+        store.reopenDay(calendar:calendar.todayBlocks,prayers:prayers.blocks)
+        await refreshAfterScheduleChange()
+    }
+
+    private func endDay() {
+        store.endDay()
+        Task {
+            await notifications.refresh(for:[],minutesBefore:0)
+            await LiveActivityManager.shared.end()
+        }
+    }
+
+    private func close(_ b:ScheduleBlock) {
+        // Calendar completion is local to Alsagier; it never edits EventKit.
+        if b.kind == .calendar || b.kind == .travel {
+            if let di=store.todayIndex,
+               let bi=store.dayPlans[di].blocks.firstIndex(where:{$0.id==b.id}) {
+                store.dayPlans[di].blocks[bi].isCompleted=true
+                store.save()
+            }
+        } else {
+            store.complete(b,calendar:calendar.todayBlocks,prayers:prayers.blocks)
+        }
+        refreshEverything()
+    }
+
+    private func skip(_ b:ScheduleBlock) {
+        store.skip(b,calendar:calendar.todayBlocks,prayers:prayers.blocks)
+        refreshEverything()
+    }
+
+    private func extend(_ b:ScheduleBlock) {
+        store.extend15(b,calendar:calendar.todayBlocks,prayers:prayers.blocks)
+        refreshEverything()
+    }
+
+    private func refreshEverything() {
+        Task { await refreshAfterScheduleChange() }
+    }
+
+    private func refreshAfterScheduleChange() async {
+        await notifications.refresh(for:blocks,minutesBefore:store.settings.reminderMinutes)
+        if let cutoff=Calendar.current.date(bySettingHour:store.settings.workEndHour,minute:0,second:0,of:Date()) {
+            await notifications.scheduleWorkdayEnd(at:cutoff)
+        }
+        await refreshLiveActivity()
+    }
+
+    private func refreshLiveActivity() async {
+        await LiveActivityManager.shared.refresh(blocks:blocks,dayActive:store.isDayActive)
+    }
+}
+
+private struct TimelineCard: View {
+    let block:ScheduleBlock
+    var body:some View {
+        HStack(spacing:12) {
+            RoundedRectangle(cornerRadius:4).fill(block.color).frame(width:6)
+            VStack(alignment:.leading,spacing:4) {
+                HStack {
+                    Image(systemName:block.kind.icon).foregroundStyle(block.color)
+                    Text(block.title)
+                        .font(.headline)
+                        .foregroundStyle(block.projectColor?.color ?? (block.kind == .prayer ? .green : .primary))
+                    if block.isLocked { Image(systemName:"lock.fill").font(.caption).foregroundStyle(.secondary) }
+                    if block.isCompleted { Image(systemName:"checkmark.circle.fill").foregroundStyle(.green) }
+                }
+                if let sub=block.subtitle { Text(sub).font(.subheadline) }
+                Text("\(block.start.formatted(date:.omitted,time:.shortened)) – \(block.end.formatted(date:.omitted,time:.shortened))")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }.padding()
+        .background(block.kind == .prayer ? Color.green.opacity(0.13) : block.color.opacity(0.08),
+                    in:RoundedRectangle(cornerRadius:15))
+        .opacity(block.isSkipped ? 0.45 : (block.isCompleted ? 0.60 : 1))
+    }
+}
+
+private struct HistoryView: View {
+    @EnvironmentObject private var store:AppStore
+    @Environment(\.dismiss) private var dismiss
+    var body:some View {
+        NavigationStack {
+            List(store.dayPlans.filter{!Calendar.current.isDateInToday($0.date)}.sorted{$0.date>$1.date}) { day in
+                Section(day.date.formatted(date:.complete,time:.omitted)) {
+                    ForEach(day.blocks) { b in
+                        VStack(alignment:.leading,spacing:3) {
+                            Text(b.title).font(.headline).foregroundStyle(b.projectColor?.color ?? .primary)
+                            if let s=b.subtitle { Text(s) }
+                            Text("\(b.start.formatted(date:.omitted,time:.shortened)) – \(b.end.formatted(date:.omitted,time:.shortened))")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }.navigationTitle("Past Days").toolbar { Button("Done") { dismiss() } }
+        }
+    }
+}

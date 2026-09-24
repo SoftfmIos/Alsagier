@@ -1,34 +1,37 @@
 import Foundation
-import Combine
 import UserNotifications
+import Combine
 
 @MainActor
 final class NotificationManager: ObservableObject {
-    @Published var status = "Not requested"
+    @Published var authorized = false
+    private let center = UNUserNotificationCenter.current()
 
-    func request() async {
+    func requestAuthorization() async {
         do {
-            let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
-            status = granted ? "Allowed" : "Not allowed"
+            authorized = try await center.requestAuthorization(options: [.alert, .sound, .badge])
         } catch {
-            status = "Notification error"
+            authorized = false
         }
     }
 
-    func schedule(for blocks: [ScheduleBlock]) {
-        let center = UNUserNotificationCenter.current()
+    func schedule(_ blocks: [ScheduleBlock]) async {
         center.removeAllPendingNotificationRequests()
+        guard authorized else { return }
 
-        for block in blocks where block.start > Date().addingTimeInterval(10 * 60) {
+        for block in blocks where block.start > Date() {
+            let reminder = block.start.addingTimeInterval(-10 * 60)
+            guard reminder > Date() else { continue }
+
             let content = UNMutableNotificationContent()
             content.title = "Alsagier"
             content.body = "\(block.title) starts in 10 minutes."
             content.sound = .default
 
-            let fire = block.start.addingTimeInterval(-10 * 60)
-            let components = Calendar.current.dateComponents([.year,.month,.day,.hour,.minute], from: fire)
+            let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: reminder)
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-            center.add(UNNotificationRequest(identifier: block.id.uuidString, content: content, trigger: trigger))
+            let request = UNNotificationRequest(identifier: "alsagier-\(block.id.uuidString)", content: content, trigger: trigger)
+            try? await center.add(request)
         }
     }
 }

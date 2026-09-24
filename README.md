@@ -1,6 +1,19 @@
-# Alsagier V4 — By Softfm
+# Alsagier By Softfm — V4.3
+
+Synchronized SwiftUI source set for iOS 17+.
+
 Bundle ID: `com.softfm.alsagierapp`
 
-V4 MVP: Today timeline, exact +10-minute Start My Day, EventKit calendar blocks, location-based prayer buffers, projects, persistent tasks, habits, Calls & Email Vault, 15-minute-late rescheduling, local persistence, local notifications, and Codemagic/TestFlight configuration.
+## Included
+- Today executive timeline and summary
+- Apple Calendar read integration
+- Prayer-time protected blocks (Aladhan + CoreLocation)
+- Projects with persistent colors and daily allocations
+- Persistent tasks with priority and project color inheritance
+- Recurring weekday habits
+- Calls & Email Vault with separate colors
+- 15-minute late rescheduling around locked blocks
+- Local notifications 10 minutes before scheduled blocks
+- Push Notifications entitlement for future APNs backend
 
-Remote APNs push still requires a server/provider to send remote messages.
+Remote push delivery still requires a provider/server; this package only preserves the APNs entitlement.

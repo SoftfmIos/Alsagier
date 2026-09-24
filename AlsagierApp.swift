@@ -1,5 +1,23 @@
 import SwiftUI
-@main struct AlsagierApp: App {
- @StateObject var store=AppStore(); @StateObject var cal=CalendarManager(); @StateObject var notes=NotificationManager()
- var body: some Scene { WindowGroup { MainTabView().environmentObject(store).environmentObject(cal).environmentObject(notes).task { await cal.requestAccessAndLoad(); await notes.requestAuthorization() } } }
+
+@main
+struct AlsagierApp: App {
+    @StateObject private var store = AppStore()
+    @StateObject private var calendar = CalendarManager()
+    @StateObject private var notifications = NotificationManager()
+    @StateObject private var prayers = PrayerManager()
+
+    var body: some Scene {
+        WindowGroup {
+            MainTabView()
+                .environmentObject(store)
+                .environmentObject(calendar)
+                .environmentObject(notifications)
+                .environmentObject(prayers)
+                .task {
+                    await calendar.requestAccessAndLoad()
+                    await notifications.requestAuthorization()
+                }
+        }
+    }
 }

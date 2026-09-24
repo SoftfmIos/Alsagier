@@ -1,2 +1,64 @@
 import SwiftUI
-struct MoreView:View{@EnvironmentObject var s:AppStore;@EnvironmentObject var cal:CalendarManager;@EnvironmentObject var notes:NotificationManager;@State var title="";@State var kind=VaultKind.call;var body:some View{NavigationStack{List{Section("Calls & Email Vault"){HStack{TextField("Item",text:$title);Picker("",selection:$kind){ForEach(VaultKind.allCases){Text($0.rawValue).tag($0)}}.labelsHidden();Button("Add"){if !title.isEmpty{s.addVault(title,kind);title=""}}};ForEach(s.vault){v in HStack{Image(systemName:v.kind == .call ? "phone.fill":"envelope.fill");Text(v.title).strikethrough(v.isCompleted);Spacer();Button{s.completeVault(v)}label:{Image(systemName:v.isCompleted ? "checkmark.circle.fill":"circle")}.buttonStyle(.borderless)}}.onDelete{for i in $0{s.deleteVault(s.vault[i])}}};Section("Permissions"){Label(cal.authorized ? "Calendar connected":"Calendar permission needed",systemImage:"calendar");Label(notes.authorized ? "Notifications enabled":"Notifications permission needed",systemImage:"bell")};Section("About"){Text("Alsagier By Softfm");Text("V4")}}.navigationTitle("More")}}}
+
+struct MoreView: View {
+    @EnvironmentObject private var store: AppStore
+    @EnvironmentObject private var calendar: CalendarManager
+    @EnvironmentObject private var notifications: NotificationManager
+
+    @State private var title = ""
+    @State private var kind = VaultKind.call
+    @State private var duration = 15
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Calls & Email Vault") {
+                    TextField("Item", text: $title)
+                    Picker("Type", selection: $kind) {
+                        ForEach(VaultKind.allCases) { option in
+                            Text(option.rawValue).tag(option)
+                        }
+                    }
+                    Picker("Duration", selection: $duration) {
+                        ForEach([15, 30, 45, 60], id: \.self) { value in
+                            Text("\(value) minutes").tag(value)
+                        }
+                    }
+                    Button("Add to Vault") {
+                        store.addVault(title: title, kind: kind, duration: duration)
+                        title = ""
+                    }
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    ForEach(store.vault) { item in
+                        HStack {
+                            Image(systemName: item.kind == .call ? "phone.fill" : "envelope.fill")
+                                .foregroundStyle(item.kind == .call ? Color.purple : Color.teal)
+                            Text(item.title).strikethrough(item.isCompleted)
+                            Spacer()
+                            Button { store.toggleVault(item) } label: {
+                                Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                        .swipeActions {
+                            Button("Delete", role: .destructive) { store.deleteVault(item) }
+                        }
+                    }
+                }
+
+                Section("Permissions") {
+                    Label(calendar.authorized ? "Calendar connected" : "Calendar permission needed", systemImage: "calendar")
+                    Label(notifications.authorized ? "Notifications enabled" : "Notifications permission needed", systemImage: "bell")
+                }
+
+                Section("About") {
+                    Text("Alsagier By Softfm")
+                    Text("V4.3")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("More")
+        }
+    }
+}

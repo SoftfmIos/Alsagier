@@ -1,34 +1,31 @@
 import Foundation
-import Combine
 import EventKit
+import Combine
 
 @MainActor
 final class CalendarManager: ObservableObject {
-    private let store = EKEventStore()
-    @Published var blocks: [ScheduleBlock] = []
-    @Published var status = "Not requested"
+    @Published var authorized = false
+    @Published var todayBlocks: [ScheduleBlock] = []
 
-    func request() async {
+    private let store = EKEventStore()
+
+    func requestAccessAndLoad() async {
         do {
-            let granted: Bool
-            if #available(iOS 17.0, *) {
-                granted = try await store.requestFullAccessToEvents()
-            } else {
-                granted = try await store.requestAccess(to: .event)
-            }
-            status = granted ? "Allowed" : "Not allowed"
-            if granted { loadToday() }
+            authorized = try await store.requestFullAccessToEvents()
+            if authorized { loadToday() }
         } catch {
-            status = "Calendar error"
+            authorized = false
+            todayBlocks = []
         }
     }
 
     func loadToday() {
+        guard authorized else { return }
         let cal = Calendar.current
         let start = cal.startOfDay(for: Date())
-        let end = cal.date(byAdding: .day, value: 1, to: start)!
+        guard let end = cal.date(byAdding: .day, value: 1, to: start) else { return }
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
-        blocks = store.events(matching: predicate)
+        todayBlocks = store.events(matching: predicate)
             .filter { !$0.isAllDay }
             .map {
                 ScheduleBlock(
@@ -36,7 +33,6 @@ final class CalendarManager: ObservableObject {
                     start: $0.startDate,
                     end: $0.endDate,
                     kind: .calendar,
-                    color: .calendar,
                     isLocked: true
                 )
             }

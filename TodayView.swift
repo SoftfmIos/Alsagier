@@ -53,7 +53,7 @@ struct TodayView: View {
                     emotionInsight=nil
                 } onSkip: { emotionInsight=nil }
             }
-            .alert("Dad Joke of the Day", isPresented: Binding(get:{ dadJoke != nil }, set:{ if !$0 { dadJoke=nil } })) {
+            .alert("Dad Joke", isPresented: Binding(get:{ dadJoke != nil }, set:{ if !$0 { dadJoke=nil } })) {
                 Button("Let's go") { dadJoke=nil }
             } message: { Text(dadJoke ?? "") }
             .task {
@@ -127,6 +127,7 @@ struct TodayView: View {
             } else {
                 Button {
                     store.reopenDay() // immediate state/UI change
+                    dadJoke = store.nextDadJoke()
                     Task { await refreshMyDay() }
                 } label: {
                     Label("Re-open My Day",systemImage:"arrow.counterclockwise").frame(maxWidth:.infinity)
@@ -210,7 +211,7 @@ struct TodayView: View {
         calendar.loadToday()
         await prayers.refresh()
         store.startDay(calendar:calendar.todayBlocks,prayers:prayers.blocks)
-        dadJoke = store.dadJokeForToday()
+        dadJoke = store.nextDadJoke()
         await refreshAfterScheduleChange()
         starting=false
     }

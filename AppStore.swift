@@ -20,8 +20,6 @@ final class AppStore: ObservableObject {
     private let iKey = "capjour.v5.insights"
     private let hcKey = "capjour.v5.habitCompletions"
     private let dadShownKey = "capjour.v5.dadJokes.shown"
-    private let dadDateKey = "capjour.v5.dadJokes.date"
-    private let dadIndexKey = "capjour.v5.dadJokes.index"
     private let migrationKey = "alsagier.v5.migratedV43"
 
     init() {
@@ -582,20 +580,15 @@ final class AppStore: ObservableObject {
         if changed { save() }
     }
 
-    func dadJokeForToday() -> String? {
+    func nextDadJoke() -> String? {
         guard settings.dadJokesEnabled, !DadJokes.all.isEmpty else { return nil }
-        let day = Calendar.current.startOfDay(for: Date())
-        if let saved = defaults.object(forKey: dadDateKey) as? Date,
-           Calendar.current.isDate(saved, inSameDayAs: day) {
-            let idx = defaults.integer(forKey: dadIndexKey)
-            if DadJokes.all.indices.contains(idx) { return DadJokes.all[idx] }
-        }
         var shown = defaults.array(forKey: dadShownKey) as? [Int] ?? []
+        shown = shown.filter { DadJokes.all.indices.contains($0) }
         if shown.count >= DadJokes.all.count { shown.removeAll() }
         let remaining = DadJokes.all.indices.filter { !shown.contains($0) }
         guard let idx = remaining.randomElement() else { return nil }
         shown.append(idx)
-        defaults.set(shown, forKey: dadShownKey); defaults.set(day, forKey: dadDateKey); defaults.set(idx, forKey: dadIndexKey)
+        defaults.set(shown, forKey: dadShownKey)
         return DadJokes.all[idx]
     }
 

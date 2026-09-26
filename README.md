@@ -1,3 +1,5 @@
+CapJour V5.1 Build 15
+
 # Alsagier By Softfm — V5 Source
 
 Main bundle: `com.softfm.alsagierapp`

@@ -11,6 +11,7 @@ struct TodayView: View {
     @State private var confirmEnd = false
     @State private var refreshing = false
     @State private var actionBlock: ScheduleBlock?
+    @State private var switchBlock: ScheduleBlock?
     @StateObject private var health = HealthManager.shared
 
     var body: some View {
@@ -36,9 +37,13 @@ struct TodayView: View {
             .confirmationDialog(actionBlock?.title ?? "Schedule action", isPresented: Binding(
                 get:{ actionBlock != nil }, set:{ if !$0 { actionBlock=nil } }), titleVisibility:.visible) {
                 if let b=actionBlock, canClose(b) { Button("Done") { close(b); actionBlock=nil } }
+                if let b=actionBlock, canSwitch(b) { Button("Switch Work") { switchBlock=b; actionBlock=nil } }
                 if let b=actionBlock, !b.isLocked { Button("+15 min") { extend(b); actionBlock=nil } }
                 if let b=actionBlock, !b.isLocked { Button("Skip Today") { skip(b); actionBlock=nil } }
                 Button("Cancel",role:.cancel) { actionBlock=nil }
+            }
+            .sheet(item:$switchBlock) { block in
+                SwitchWorkView(block:block) { refreshEverything() }
             }
             .task {
                 await health.requestAccess()
@@ -183,6 +188,10 @@ struct TodayView: View {
 
     private func canClose(_ block:ScheduleBlock) -> Bool {
         block.kind != .prayer
+    }
+
+    private func canSwitch(_ block:ScheduleBlock) -> Bool {
+        !block.isLocked && (block.kind == .task || block.kind == .project)
     }
 
     private func startDay() async {
@@ -378,7 +387,71 @@ private struct TimelineCard: View {
     }
 }
 
-private struct HistoryView: View {
+private struct SwitchWorkView: View {
+    @EnvironmentObject private var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+    let block: ScheduleBlock
+    let onChanged: () -> Void
+
+    private var activeTasks: [ExecutiveTask] {
+        store.tasks.filter { !$0.isCompleted }.sorted { a,b in
+            if a.priority.rank != b.priority.rank { return a.priority.rank < b.priority.rank }
+            return a.createdAt < b.createdAt
+        }
+    }
+    private var activeProjects: [Project] {
+        store.projects.filter { $0.status == .active }.sorted { $0.priority.rank < $1.priority.rank }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if !activeTasks.isEmpty {
+                    Section("Active Tasks") {
+                        ForEach(activeTasks) { task in
+                            Button {
+                                store.switchWork(blockID:block.id,toTask:task)
+                                onChanged(); dismiss()
+                            } label: {
+                                VStack(alignment:.leading,spacing:3) {
+                                    Text(task.title).foregroundStyle(.primary)
+                                    HStack(spacing:4) {
+                                        Text("\(task.duration)m • \(task.priority.rawValue)")
+                                        if let id=task.projectID, let p=store.projects.first(where:{$0.id==id}) {
+                                            Text("• \(p.name)").foregroundStyle(p.color.color)
+                                        }
+                                    }.font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+                if !activeProjects.isEmpty {
+                    Section("Project Work") {
+                        ForEach(activeProjects) { project in
+                            Button {
+                                store.switchWork(blockID:block.id,toProject:project)
+                                onChanged(); dismiss()
+                            } label: {
+                                HStack {
+                                    Circle().fill(project.color.color).frame(width:12,height:12)
+                                    Text(project.name).foregroundStyle(.primary)
+                                    Spacer()
+                                    Text("same time block").font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Switch Work")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement:.cancellationAction){Button("Cancel"){dismiss()}} }
+        }
+    }
+}
+
+struct HistoryView: View {
     @EnvironmentObject private var store:AppStore
     @Environment(\.dismiss) private var dismiss
     var body:some View {

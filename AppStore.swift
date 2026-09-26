@@ -88,7 +88,57 @@ final class AppStore: ObservableObject {
     func toggleTask(_ task: ExecutiveTask) {
         if let i = tasks.firstIndex(where: {$0.id == task.id}) { tasks[i].isCompleted.toggle(); save() }
     }
+    func updateTask(_ task: ExecutiveTask) {
+        guard let i = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        var value = task
+        value.title = value.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.title.isEmpty else { return }
+        tasks[i] = value
+        save()
+    }
+    func duplicateTask(_ task: ExecutiveTask) {
+        var copy = task
+        copy.id = UUID()
+        copy.title = task.title + " Copy"
+        copy.isCompleted = false
+        copy.createdAt = Date()
+        tasks.append(copy)
+        save()
+    }
     func deleteTask(_ task: ExecutiveTask) { tasks.removeAll {$0.id == task.id}; save() }
+
+    // Switch only the selected flexible time block. The rest of today's plan is left alone.
+    // If the user switches away from a task, that original task remains open for a later block/day.
+    func switchWork(blockID: UUID, toTask task: ExecutiveTask) {
+        guard let di = todayIndex,
+              dayPlans[di].endedAt == nil,
+              let bi = dayPlans[di].blocks.firstIndex(where: { $0.id == blockID }),
+              !dayPlans[di].blocks[bi].isLocked else { return }
+        let project = task.projectID.flatMap { id in projects.first(where: { $0.id == id }) }
+        dayPlans[di].blocks[bi].sourceID = task.id
+        dayPlans[di].blocks[bi].title = task.title
+        dayPlans[di].blocks[bi].subtitle = project?.name ?? "Task"
+        dayPlans[di].blocks[bi].kind = .task
+        dayPlans[di].blocks[bi].projectColor = project?.color
+        dayPlans[di].blocks[bi].isCompleted = false
+        dayPlans[di].blocks[bi].isSkipped = false
+        save()
+    }
+
+    func switchWork(blockID: UUID, toProject project: Project) {
+        guard let di = todayIndex,
+              dayPlans[di].endedAt == nil,
+              let bi = dayPlans[di].blocks.firstIndex(where: { $0.id == blockID }),
+              !dayPlans[di].blocks[bi].isLocked else { return }
+        dayPlans[di].blocks[bi].sourceID = project.id
+        dayPlans[di].blocks[bi].title = project.name
+        dayPlans[di].blocks[bi].subtitle = "Project work"
+        dayPlans[di].blocks[bi].kind = .project
+        dayPlans[di].blocks[bi].projectColor = project.color
+        dayPlans[di].blocks[bi].isCompleted = false
+        dayPlans[di].blocks[bi].isSkipped = false
+        save()
+    }
 
     func addHabit(_ h: Habit) { habits.append(h); save() }
     func updateHabit(_ h: Habit) {

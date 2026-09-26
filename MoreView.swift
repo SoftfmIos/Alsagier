@@ -51,7 +51,7 @@ struct MoreView:View {
                 }
                 Section("About") {
                     Text("Alsagier By Softfm")
-                    Text("Version 5.1 • Build 11").foregroundStyle(.secondary)
+                    Text("Version 5.1 • Build 12").foregroundStyle(.secondary)
                 }
             }.navigationTitle("More")
             .onAppear{draft=store.settings}

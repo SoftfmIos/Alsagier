@@ -6,6 +6,7 @@ struct TasksView: View {
     @EnvironmentObject private var store:AppStore
     @State private var add=false
     @State private var filter: TaskFilter = .all
+    @State private var editingTask: ExecutiveTask?
 
     private var visible: [ExecutiveTask] {
         switch filter {
@@ -41,11 +42,20 @@ struct TasksView: View {
                                     if let id=t.projectID,let p=store.projects.first(where:{$0.id==id}){Text("• \(p.name)").foregroundStyle(p.color.color)}
                                 }.font(.caption).foregroundStyle(.secondary)
                             }
-                        }.swipeActions{Button("Delete",role:.destructive){store.deleteTask(t)}}
+                            Spacer()
+                            Image(systemName:"chevron.right").font(.caption).foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture { editingTask=t }
+                        .swipeActions(edge:.trailing, allowsFullSwipe:false) {
+                            Button("Delete",role:.destructive){store.deleteTask(t)}
+                            Button("Duplicate") { store.duplicateTask(t) }.tint(.blue)
+                        }
                     }
                 }.listStyle(.plain)
             }.navigationTitle("Tasks").toolbar{Button{add=true}label:{Image(systemName:"plus")}}
-            .sheet(isPresented:$add){AddTaskView()}
+            .sheet(isPresented:$add){TaskEditorView(task:nil)}
+            .sheet(item:$editingTask){ task in TaskEditorView(task:task) }
         }
     }
     private func chip(_ title:String,_ value:TaskFilter)->some View {
@@ -60,17 +70,48 @@ struct TasksView: View {
     }
 }
 
-private struct AddTaskView:View {
+private struct TaskEditorView:View {
     @EnvironmentObject private var store:AppStore
     @Environment(\.dismiss) private var dismiss
-    @State private var title=""; @State private var duration=15; @State private var projectID:UUID?; @State private var priority=WorkPriority.normal
+    let task: ExecutiveTask?
+    @State private var title:String
+    @State private var duration:Int
+    @State private var projectID:UUID?
+    @State private var priority:WorkPriority
+    @State private var isCompleted:Bool
+
+    init(task: ExecutiveTask?) {
+        self.task=task
+        _title=State(initialValue:task?.title ?? "")
+        _duration=State(initialValue:task?.duration ?? 15)
+        _projectID=State(initialValue:task?.projectID)
+        _priority=State(initialValue:task?.priority ?? .normal)
+        _isCompleted=State(initialValue:task?.isCompleted ?? false)
+    }
+
     var body:some View { NavigationStack { Form {
         TextField("Task",text:$title)
         Picker("Duration",selection:$duration){ForEach([15,30,45,60,90],id:\.self){Text("\($0) min").tag($0)}}
         Picker("Project",selection:$projectID){ Text("None").tag(Optional<UUID>.none); ForEach(store.projects.filter{$0.status != .closed}){p in Text(p.name).foregroundStyle(p.color.color).tag(Optional(p.id))} }
         Picker("Priority",selection:$priority){ForEach(WorkPriority.allCases){Text($0.rawValue).tag($0)}}
-    }.navigationTitle("New Task").toolbar {
+        if task != nil {
+            Picker("Status",selection:$isCompleted) {
+                Text("Active").tag(false)
+                Text("Closed").tag(true)
+            }
+        }
+    }.navigationTitle(task == nil ? "New Task" : "Edit Task").toolbar {
         ToolbarItem(placement:.cancellationAction){Button("Cancel"){dismiss()}}
-        ToolbarItem(placement:.confirmationAction){Button("Add"){store.addTask(title:title,duration:duration,projectID:projectID,priority:priority);dismiss()}.disabled(title.isEmpty)}
+        ToolbarItem(placement:.confirmationAction){Button(task == nil ? "Add" : "Save"){
+            let clean=title.trimmingCharacters(in:.whitespacesAndNewlines)
+            if var existing=task {
+                existing.title=clean; existing.duration=duration; existing.projectID=projectID
+                existing.priority=priority; existing.isCompleted=isCompleted
+                store.updateTask(existing)
+            } else {
+                store.addTask(title:clean,duration:duration,projectID:projectID,priority:priority)
+            }
+            dismiss()
+        }.disabled(title.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)}
     } } }
 }

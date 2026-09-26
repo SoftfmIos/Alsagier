@@ -182,6 +182,19 @@ struct ScheduleBlock: Identifiable, Codable, Equatable {
     var durationMinutes: Int { max(0, Int(end.timeIntervalSince(start) / 60)) }
 }
 
+struct WorkInsight: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var projectID: UUID?
+    var projectName: String
+    var taskID: UUID?
+    var taskName: String?
+    var blockKind: BlockKind
+    var date: Date
+    var plannedMinutes: Int
+    var actualMinutes: Int
+    var happiness: Int?
+}
+
 struct DayPlan: Identifiable, Codable, Equatable {
     var id = UUID()
     var date: Date

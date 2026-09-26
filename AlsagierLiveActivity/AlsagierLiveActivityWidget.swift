@@ -7,7 +7,7 @@ struct AlsagierLiveActivityWidget: Widget {
         ActivityConfiguration(for: AlsagierActivityAttributes.self) { context in
             VStack(alignment:.leading,spacing:7) {
                 HStack {
-                    Text(context.state.isUpcoming ? "ALSAGIER • NEXT" : "ALSAGIER • NOW").font(.caption2.bold())
+                    Text(context.state.isUpcoming ? "CAPJOUR • NEXT" : "CAPJOUR • NOW").font(.caption2.bold())
                     Spacer()
                     if !context.state.isUpcoming {
                         Text(timerInterval: Date()...context.state.end, countsDown:true).font(.caption.bold().monospacedDigit())

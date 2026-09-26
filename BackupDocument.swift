@@ -8,7 +8,22 @@ struct AlsagierBackup: Codable {
     var tasks: [ExecutiveTask]
     var habits: [Habit]
     var dayPlans: [DayPlan]
+    var insights: [WorkInsight] = []
     var settings: AppSettings
+
+    enum CodingKeys: String, CodingKey { case version, createdAt, projects, tasks, habits, dayPlans, insights, settings }
+    init(version: Int = 1, createdAt: Date = Date(), projects: [Project], tasks: [ExecutiveTask], habits: [Habit], dayPlans: [DayPlan], insights: [WorkInsight] = [], settings: AppSettings) {
+        self.version=version; self.createdAt=createdAt; self.projects=projects; self.tasks=tasks; self.habits=habits; self.dayPlans=dayPlans; self.insights=insights; self.settings=settings
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        version = try c.decodeIfPresent(Int.self, forKey:.version) ?? 1
+        createdAt = try c.decodeIfPresent(Date.self, forKey:.createdAt) ?? Date()
+        projects = try c.decode([Project].self, forKey:.projects); tasks = try c.decode([ExecutiveTask].self, forKey:.tasks)
+        habits = try c.decode([Habit].self, forKey:.habits); dayPlans = try c.decode([DayPlan].self, forKey:.dayPlans)
+        insights = try c.decodeIfPresent([WorkInsight].self, forKey:.insights) ?? []
+        settings = try c.decode(AppSettings.self, forKey:.settings)
+    }
 }
 
 struct AlsagierBackupDocument: FileDocument {

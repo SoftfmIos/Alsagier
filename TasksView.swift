@@ -79,6 +79,8 @@ private struct TaskEditorView:View {
     @State private var projectID:UUID?
     @State private var priority:WorkPriority
     @State private var isCompleted:Bool
+    @State private var actualMinutes:Int
+    @State private var happiness:Int?
 
     init(task: ExecutiveTask?) {
         self.task=task
@@ -87,6 +89,8 @@ private struct TaskEditorView:View {
         _projectID=State(initialValue:task?.projectID)
         _priority=State(initialValue:task?.priority ?? .normal)
         _isCompleted=State(initialValue:task?.isCompleted ?? false)
+        _actualMinutes=State(initialValue:task?.duration ?? 15)
+        _happiness=State(initialValue:nil)
     }
 
     var body:some View { NavigationStack { Form {
@@ -100,7 +104,36 @@ private struct TaskEditorView:View {
                 Text("Closed").tag(true)
             }
         }
-    }.navigationTitle(task == nil ? "New Task" : "Edit Task").toolbar {
+        if task != nil && isCompleted {
+            Section("Completed Work") {
+                Stepper("Actual time: \(actualMinutes) min", value:$actualMinutes, in:1...480, step:5)
+                VStack(alignment:.leading, spacing:10) {
+                    Text("How did this work feel?").font(.subheadline.weight(.semibold))
+                    HStack {
+                        ForEach(1...5, id:\.self) { value in
+                            Button { happiness = value } label: {
+                                Text(["😞","🙁","😐","🙂","😄"][value-1]).font(.title2).padding(7)
+                                    .background(happiness == value ? Color.accentColor.opacity(0.18) : Color.clear, in:Circle())
+                            }.buttonStyle(.plain)
+                        }
+                        if happiness != nil { Button("Clear") { happiness=nil }.font(.caption) }
+                    }
+                    Text("Optional. You can add or change this later. It only updates your local Insights history.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }.navigationTitle(task == nil ? "New Task" : "Edit Task")
+    .onAppear {
+        guard let task, task.isCompleted else { return }
+        if let insight=store.latestInsight(for: task.id) {
+            actualMinutes=insight.actualMinutes
+            happiness=insight.happiness
+        } else {
+            actualMinutes=task.duration
+        }
+    }
+    .toolbar {
         ToolbarItem(placement:.cancellationAction){Button("Cancel"){dismiss()}}
         ToolbarItem(placement:.confirmationAction){Button(task == nil ? "Add" : "Save"){
             let clean=title.trimmingCharacters(in:.whitespacesAndNewlines)
@@ -108,6 +141,9 @@ private struct TaskEditorView:View {
                 existing.title=clean; existing.duration=duration; existing.projectID=projectID
                 existing.priority=priority; existing.isCompleted=isCompleted
                 store.updateTask(existing)
+                if existing.isCompleted {
+                    store.updateClosedTaskInsight(task: existing, actualMinutes: actualMinutes, happiness: happiness)
+                }
             } else {
                 store.addTask(title:clean,duration:duration,projectID:projectID,priority:priority)
             }

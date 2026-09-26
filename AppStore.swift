@@ -7,6 +7,7 @@ final class AppStore: ObservableObject {
     @Published var tasks: [ExecutiveTask] = []
     @Published var habits: [Habit] = []
     @Published var dayPlans: [DayPlan] = []
+    @Published var insights: [WorkInsight] = []
     @Published var settings = AppSettings()
 
     private let defaults = UserDefaults.standard
@@ -15,6 +16,7 @@ final class AppStore: ObservableObject {
     private let hKey = "alsagier.v5.habits"
     private let dKey = "alsagier.v5.dayplans"
     private let sKey = "alsagier.v5.settings"
+    private let iKey = "capjour.v5.insights"
     private let migrationKey = "alsagier.v5.migratedV43"
 
     init() {
@@ -192,6 +194,7 @@ final class AppStore: ObservableObject {
               let bi = dayPlans[di].blocks.firstIndex(where: {$0.id == block.id}) else { return }
 
         dayPlans[di].blocks[bi].isCompleted = true
+        recordCompletionInsight(for: dayPlans[di].blocks[bi])
         if block.kind == .task, let source = block.sourceID,
            let ti = tasks.firstIndex(where: {$0.id == source}) { tasks[ti].isCompleted = true }
         if block.kind == .habit, let source = block.sourceID {
@@ -202,6 +205,58 @@ final class AppStore: ObservableObject {
         save()
         rebalanceFuture(calendar: calendar, prayers: prayers)
     }
+
+    private func recordCompletionInsight(for block: ScheduleBlock) {
+        guard block.kind == .task || block.kind == .project else { return }
+        let project: Project?
+        let task: ExecutiveTask?
+        if block.kind == .task, let source = block.sourceID {
+            task = tasks.first(where: { $0.id == source })
+            project = task?.projectID.flatMap { pid in projects.first(where: { $0.id == pid }) }
+        } else {
+            task = nil
+            project = block.sourceID.flatMap { pid in projects.first(where: { $0.id == pid }) }
+        }
+        let now = Date()
+        let actualEnd = max(block.start, min(now, block.end))
+        let actual = max(1, Int(ceil(actualEnd.timeIntervalSince(block.start) / 60)))
+        insights.append(WorkInsight(projectID: project?.id, projectName: project?.name ?? block.title,
+                                    taskID: task?.id, taskName: task?.title ?? block.subtitle, blockKind: block.kind,
+                                    date: now, plannedMinutes: block.durationMinutes, actualMinutes: actual, happiness: nil))
+    }
+
+    func setHappiness(for insightID: UUID, rating: Int) {
+        guard (1...5).contains(rating), let i = insights.firstIndex(where: { $0.id == insightID }) else { return }
+        insights[i].happiness = rating
+        save()
+    }
+
+    func latestInsight(for taskID: UUID) -> WorkInsight? {
+        insights.last(where: { $0.taskID == taskID })
+    }
+
+    func updateClosedTaskInsight(task: ExecutiveTask, actualMinutes: Int, happiness: Int?) {
+        guard task.isCompleted else { return }
+        let actual = max(1, actualMinutes)
+        let rating = happiness.flatMap { (1...5).contains($0) ? $0 : nil }
+        if let i = insights.lastIndex(where: { $0.taskID == task.id }) {
+            insights[i].actualMinutes = actual
+            insights[i].happiness = rating
+            insights[i].taskName = task.title
+            if let pid = task.projectID, let project = projects.first(where: { $0.id == pid }) {
+                insights[i].projectID = pid
+                insights[i].projectName = project.name
+            }
+        } else {
+            let project = task.projectID.flatMap { pid in projects.first(where: { $0.id == pid }) }
+            insights.append(WorkInsight(projectID: project?.id, projectName: project?.name ?? "Task",
+                                        taskID: task.id, taskName: task.title, blockKind: .task,
+                                        date: Date(), plannedMinutes: task.duration, actualMinutes: actual, happiness: rating))
+        }
+        save()
+    }
+
+    var latestUnratedInsight: WorkInsight? { insights.last(where: { $0.happiness == nil }) }
 
     func skip(_ block: ScheduleBlock, calendar: [ScheduleBlock], prayers: [ScheduleBlock]) {
         guard let di = todayIndex,
@@ -268,6 +323,7 @@ final class AppStore: ObservableObject {
         tasks = []
         habits = []
         dayPlans = []
+        insights = []
         settings = AppSettings()
         defaults.set(true, forKey: migrationKey) // never resurrect V4.3 test data after reset
         save()
@@ -498,7 +554,7 @@ final class AppStore: ObservableObject {
     }
 
     func makeBackup() -> AlsagierBackup {
-        AlsagierBackup(projects: projects, tasks: tasks, habits: habits, dayPlans: dayPlans, settings: settings)
+        AlsagierBackup(projects: projects, tasks: tasks, habits: habits, dayPlans: dayPlans, insights: insights, settings: settings)
     }
 
     func restoreBackup(_ backup: AlsagierBackup) {
@@ -506,6 +562,7 @@ final class AppStore: ObservableObject {
         tasks = backup.tasks
         habits = backup.habits
         dayPlans = backup.dayPlans
+        insights = backup.insights
         settings = backup.settings
         removeDuplicateFixedBlocksFromStoredPlans()
         save()
@@ -517,6 +574,7 @@ final class AppStore: ObservableObject {
         if let d = try? enc.encode(tasks) { defaults.set(d, forKey: tKey) }
         if let d = try? enc.encode(habits) { defaults.set(d, forKey: hKey) }
         if let d = try? enc.encode(dayPlans) { defaults.set(d, forKey: dKey) }
+        if let d = try? enc.encode(insights) { defaults.set(d, forKey: iKey) }
         if let d = try? enc.encode(settings) { defaults.set(d, forKey: sKey) }
     }
 
@@ -526,6 +584,7 @@ final class AppStore: ObservableObject {
         if let d=defaults.data(forKey:tKey), let x=try? dec.decode([ExecutiveTask].self,from:d){tasks=x}
         if let d=defaults.data(forKey:hKey), let x=try? dec.decode([Habit].self,from:d){habits=x}
         if let d=defaults.data(forKey:dKey), let x=try? dec.decode([DayPlan].self,from:d){dayPlans=x}
+        if let d=defaults.data(forKey:iKey), let x=try? dec.decode([WorkInsight].self,from:d){insights=x}
         if let d=defaults.data(forKey:sKey), let x=try? dec.decode(AppSettings.self,from:d){settings=x}
     }
 

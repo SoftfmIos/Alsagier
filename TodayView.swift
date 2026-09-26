@@ -12,6 +12,7 @@ struct TodayView: View {
     @State private var refreshing = false
     @State private var actionBlock: ScheduleBlock?
     @State private var switchBlock: ScheduleBlock?
+    @State private var emotionInsight: WorkInsight?
     @StateObject private var health = HealthManager.shared
 
     var body: some View {
@@ -44,6 +45,12 @@ struct TodayView: View {
             }
             .sheet(item:$switchBlock) { block in
                 SwitchWorkView(block:block) { refreshEverything() }
+            }
+            .sheet(item:$emotionInsight) { insight in
+                EmotionRatingView(insight: insight) { rating in
+                    store.setHappiness(for: insight.id, rating: rating)
+                    emotionInsight=nil
+                } onSkip: { emotionInsight=nil }
             }
             .task {
                 await health.requestAccess()
@@ -174,7 +181,7 @@ struct TodayView: View {
     @ViewBuilder private var timeline: some View {
         if blocks.isEmpty {
             ContentUnavailableView("No schedule yet",systemImage:"calendar.day.timeline.left",
-                description:Text("Alsagier plans around Calendar, prayer, projects, tasks and habits."))
+                description:Text("CapJour plans around Calendar, prayer, projects, tasks and habits."))
         } else {
             LazyVStack(spacing:9) {
                 ForEach(blocks) { b in
@@ -230,7 +237,7 @@ struct TodayView: View {
     }
 
     private func close(_ b:ScheduleBlock) {
-        // Calendar completion is local to Alsagier; it never edits EventKit.
+        // Calendar completion is local to CapJour; it never edits EventKit.
         if b.kind == .calendar || b.kind == .travel {
             if let di=store.todayIndex,
                let bi=store.dayPlans[di].blocks.firstIndex(where:{$0.id==b.id}) {
@@ -239,6 +246,7 @@ struct TodayView: View {
             }
         } else {
             store.complete(b,calendar:calendar.todayBlocks,prayers:prayers.blocks)
+            if b.kind == .task || b.kind == .project { emotionInsight = store.latestUnratedInsight }
         }
         refreshEverything()
     }
@@ -469,5 +477,31 @@ struct HistoryView: View {
                 }
             }.navigationTitle("Past Days").toolbar { Button("Done") { dismiss() } }
         }
+    }
+}
+
+
+private struct EmotionRatingView: View {
+    let insight: WorkInsight
+    let onRate: (Int) -> Void
+    let onSkip: () -> Void
+    private let faces = ["😞","🙁","😐","🙂","😄"]
+    var body: some View {
+        VStack(spacing:22) {
+            Capsule().fill(.secondary.opacity(0.3)).frame(width:42,height:5).padding(.top,10)
+            Text("How did this work feel?").font(.title2.bold())
+            Text(insight.taskName ?? insight.projectName).font(.headline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            HStack(spacing:10) {
+                ForEach(1...5,id:\.self) { rating in
+                    Button { onRate(rating) } label: {
+                        VStack(spacing:5) { Text(faces[rating-1]).font(.system(size:34)); Text("\(rating)").font(.caption.bold()) }
+                            .frame(maxWidth:.infinity).padding(.vertical,10)
+                    }.buttonStyle(.plain)
+                }
+            }
+            Text("Optional • used only for your local Insights").font(.caption).foregroundStyle(.secondary)
+            Button("Not now", action:onSkip).foregroundStyle(.secondary)
+            Spacer()
+        }.padding().presentationDetents([.medium])
     }
 }

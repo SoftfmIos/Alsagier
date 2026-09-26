@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Alsagier</string>
+	<string>CapJour</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -27,17 +27,17 @@
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Alsagier uses your calendar to protect appointments and organize your day around them.</string>
+	<string>CapJour uses your calendar to protect appointments and organize your day around them.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Alsagier uses your location to calculate local prayer times and protect prayer time in your daily plan.</string>
+	<string>CapJour uses your location to calculate local prayer times and protect prayer time in your daily plan.</string>
 	<key>NSUserNotificationsUsageDescription</key>
-	<string>Alsagier sends reminders shortly before scheduled blocks.</string>
+	<string>CapJour sends reminders shortly before scheduled blocks.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Alsagier reads your step count and walking activity from Apple Health to track progress toward your personal walking habits and daily goals.</string>
+	<string>CapJour reads your step count and walking activity from Apple Health to track progress toward your personal walking habits and daily goals.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Alsagier uses HealthKit access to support progress and completion tracking for your personal walking habits. Alsagier does not write health data to Apple Health.</string>
+	<string>CapJour uses HealthKit access to support progress and completion tracking for your personal walking habits. CapJour does not write health data to Apple Health.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -32,7 +32,7 @@ final class NotificationManager: ObservableObject {
         guard authorized, date > Date() else { return }
         let content=UNMutableNotificationContent()
         content.title="Workday complete"
-        content.body="Alsagier has reached your configured work-end time."
+        content.body="CapJour has reached your configured work-end time."
         content.sound = .default
         let parts=Calendar.current.dateComponents([.year,.month,.day,.hour,.minute],from:date)
         try? await center.add(UNNotificationRequest(identifier:"alsagier.workday.end",

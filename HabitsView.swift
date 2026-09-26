@@ -14,7 +14,13 @@ struct HabitsView:View {
                                 Text(h.name)
                                 Text(detail(h)).font(.caption).foregroundStyle(.secondary)
                                 let progress=store.weeklyHabitProgress(h)
-                                Text("\(progress.completed)/\(progress.target) completed this week").font(.caption2).foregroundStyle(.secondary)
+                                HStack(spacing:4) {
+                                    ForEach(0..<progress.target,id:\.self) { i in
+                                        Image(systemName: i < progress.completed ? "circle.fill" : "circle")
+                                            .font(.system(size:8)).foregroundStyle(i < progress.completed ? .orange : .secondary)
+                                    }
+                                    Text("\(progress.completed)/\(progress.target) this week").font(.caption2).foregroundStyle(.secondary)
+                                }
                             }
                             Spacer(); if !h.isEnabled {Image(systemName:"pause.circle")}
                         }

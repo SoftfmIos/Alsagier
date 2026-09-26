@@ -54,27 +54,38 @@ struct TodayView: View {
     private var blocks: [ScheduleBlock] { store.todayPlan?.blocks ?? [] }
 
     private var whatNow: some View {
-        let now=Date()
-        let current=blocks.first {$0.start <= now && $0.end > now && !$0.isCompleted && !$0.isSkipped}
-        let next=blocks.first {$0.start > now && !$0.isCompleted && !$0.isSkipped}
-        return VStack(alignment:.leading,spacing:8) {
-            Text("WHAT NOW?").font(.caption.bold()).foregroundStyle(.secondary)
-            if let b=current {
-                Text(b.title).font(.title2.bold()).foregroundStyle(b.color)
-                if let sub=b.subtitle { Text(sub).font(.headline) }
-                Text("Until \(b.end.formatted(date:.omitted,time:.shortened))").foregroundStyle(.secondary)
-            } else if let n=next {
-                Text("Free right now").font(.title2.bold())
-                Text("Next: \(n.title) • \(n.start.formatted(date:.omitted,time:.shortened))")
-                    .foregroundStyle(n.projectColor?.color ?? .secondary)
-            } else {
-                Text(store.todayPlan == nil ? "Start your day when you're ready" : "Today's planned blocks are complete")
-                    .font(.headline)
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            let now=context.date
+            let current=blocks.first {$0.start <= now && $0.end > now && !$0.isCompleted && !$0.isSkipped}
+            let next=blocks.first {$0.start > now && !$0.isCompleted && !$0.isSkipped}
+            VStack(alignment:.leading,spacing:8) {
+                Text("WHAT NOW?").font(.caption.bold()).foregroundStyle(.secondary)
+                if let b=current {
+                    HStack(alignment:.firstTextBaseline) {
+                        Text(b.title).font(.title2.bold()).foregroundStyle(b.color)
+                        Spacer()
+                        Text("\(max(0,Int(b.end.timeIntervalSince(now)/60)))m left")
+                            .font(.headline).foregroundStyle(.secondary)
+                    }
+                    if let sub=b.subtitle { Text(sub).font(.headline) }
+                    if let n=next {
+                        Divider()
+                        Text("Next: \(n.title) • \(n.start.formatted(date:.omitted,time:.shortened))")
+                            .font(.subheadline).foregroundStyle(n.projectColor?.color ?? .secondary)
+                    }
+                } else if let n=next {
+                    Text("Free right now").font(.title2.bold())
+                    Text("Next: \(n.title) • \(n.start.formatted(date:.omitted,time:.shortened))")
+                        .foregroundStyle(n.projectColor?.color ?? .secondary)
+                } else {
+                    Text(store.todayPlan == nil ? "Start your day when you're ready" : "Today's planned blocks are complete")
+                        .font(.headline)
+                }
             }
+            .frame(maxWidth:.infinity,alignment:.leading)
+            .padding()
+            .background(.background,in:RoundedRectangle(cornerRadius:18))
         }
-        .frame(maxWidth:.infinity,alignment:.leading)
-        .padding()
-        .background(.background,in:RoundedRectangle(cornerRadius:18))
     }
 
     private var dayControls: some View {

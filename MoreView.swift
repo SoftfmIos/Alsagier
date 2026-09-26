@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct MoreView:View {
     @EnvironmentObject private var store:AppStore
@@ -7,6 +8,10 @@ struct MoreView:View {
     @State private var draft=AppSettings()
     @State private var confirmClearHistory=false
     @State private var confirmReset=false
+    @State private var exporting=false
+    @State private var importing=false
+    @State private var backupDocument:AlsagierBackupDocument?
+    @State private var backupMessage:String?
 
     var body:some View {
         NavigationStack {
@@ -28,6 +33,16 @@ struct MoreView:View {
                     Label(calendar.authorized ? "Calendar connected":"Calendar permission needed",systemImage:"calendar")
                     Label(notifications.authorized ? "Notifications enabled":"Notifications permission needed",systemImage:"bell")
                 }
+                Section("Backup") {
+                    Button { backupDocument=AlsagierBackupDocument(backup:store.makeBackup()); exporting=true } label: {
+                        Label("Export Alsagier Backup",systemImage:"square.and.arrow.up")
+                    }
+                    Button { importing=true } label: {
+                        Label("Restore Alsagier Backup",systemImage:"square.and.arrow.down")
+                    }
+                    Text("Backup includes Alsagier projects, tasks, habits, schedules and settings. It does not copy your iPhone Calendar or Apple Health data.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Section("Data") {
                     Button("Clear Schedule History", role:.destructive) { confirmClearHistory=true }
                     Button("Reset Alsagier", role:.destructive) { confirmReset=true }
@@ -36,11 +51,30 @@ struct MoreView:View {
                 }
                 Section("About") {
                     Text("Alsagier By Softfm")
-                    Text("Version 5.1 • Build 9").foregroundStyle(.secondary)
+                    Text("Version 5.1 • Build 11").foregroundStyle(.secondary)
                 }
             }.navigationTitle("More")
             .onAppear{draft=store.settings}
             .onChange(of:draft){_,new in store.updateSettings(new)}
+            .fileExporter(isPresented:$exporting,document:backupDocument,contentType:.json,defaultFilename:"Alsagier-Backup") { result in
+                if case .failure = result { backupMessage="Backup could not be exported." }
+            }
+            .fileImporter(isPresented:$importing,allowedContentTypes:[.json]) { result in
+                do {
+                    let url=try result.get()
+                    guard url.startAccessingSecurityScopedResource() else { throw CocoaError(.fileReadNoPermission) }
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    let data=try Data(contentsOf:url)
+                    let decoder=JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+                    let backup=try decoder.decode(AlsagierBackup.self,from:data)
+                    store.restoreBackup(backup)
+                    draft=store.settings
+                    backupMessage="Backup restored successfully."
+                } catch { backupMessage="This file could not be restored as an Alsagier backup." }
+            }
+            .alert("Alsagier Backup",isPresented:Binding(get:{backupMessage != nil},set:{if !$0{backupMessage=nil}})) {
+                Button("OK",role:.cancel){backupMessage=nil}
+            } message: { Text(backupMessage ?? "") }
             .confirmationDialog("Clear schedule history?",isPresented:$confirmClearHistory,titleVisibility:.visible) {
                 Button("Clear Schedule History",role:.destructive){store.clearScheduleHistory()}
                 Button("Cancel",role:.cancel){}
@@ -49,12 +83,8 @@ struct MoreView:View {
             }
             .confirmationDialog("Reset Alsagier?",isPresented:$confirmReset,titleVisibility:.visible) {
                 Button("Reset All Alsagier Data",role:.destructive){
-                    store.resetAllData()
-                    draft=store.settings
-                    Task {
-                        await notifications.refresh(for:[],minutesBefore:0)
-                        await LiveActivityManager.shared.end()
-                    }
+                    store.resetAllData(); draft=store.settings
+                    Task { await notifications.refresh(for:[],minutesBefore:0); await LiveActivityManager.shared.end() }
                 }
                 Button("Cancel",role:.cancel){}
             } message: {

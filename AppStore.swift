@@ -22,6 +22,45 @@ final class AppStore: ObservableObject {
         migrateV43IfNeeded()
         migrateReservedGreenProjects()
         autoCloseExpiredDay()
+        removeDuplicateFixedBlocksFromStoredPlans()
+    }
+
+
+    // Calendar/prayer inputs can receive fresh UUIDs on every refresh. Older builds could
+    // therefore persist two visually identical fixed blocks. Normalize stored plans by
+    // semantic identity (kind/title/start/end), so an already-saved duplicate is repaired
+    // automatically on launch as well as during later refreshes.
+    private func deduplicatedFixedBlocks(_ blocks: [ScheduleBlock]) -> [ScheduleBlock] {
+        var result: [ScheduleBlock] = []
+        for block in blocks.sorted(by: { $0.start < $1.start }) {
+            if block.kind == .prayer || block.kind == .calendar {
+                if let index = result.firstIndex(where: { existing in
+                    existing.kind == block.kind &&
+                    existing.title == block.title &&
+                    abs(existing.start.timeIntervalSince(block.start)) < 60 &&
+                    abs(existing.end.timeIntervalSince(block.end)) < 60
+                }) {
+                    // Preserve any state that may already have been recorded.
+                    result[index].isCompleted = result[index].isCompleted || block.isCompleted
+                    result[index].isSkipped = result[index].isSkipped || block.isSkipped
+                    continue
+                }
+            }
+            result.append(block)
+        }
+        return result
+    }
+
+    private func removeDuplicateFixedBlocksFromStoredPlans() {
+        var changed = false
+        for index in dayPlans.indices {
+            let cleaned = deduplicatedFixedBlocks(dayPlans[index].blocks)
+            if cleaned.count != dayPlans[index].blocks.count {
+                dayPlans[index].blocks = cleaned
+                changed = true
+            }
+        }
+        if changed { save() }
     }
 
     var todayIndex: Int? {
@@ -202,7 +241,9 @@ final class AppStore: ObservableObject {
     private func rebalanceFuture(calendar: [ScheduleBlock], prayers: [ScheduleBlock],
                                  after moment: Date = Date(), scheduleFrom: Date? = nil) {
         guard let di = todayIndex, dayPlans[di].endedAt == nil else { return }
-        let existing = dayPlans[di].blocks
+        // Clean legacy/stored fixed duplicates before deciding what must be preserved.
+        let existing = deduplicatedFixedBlocks(dayPlans[di].blocks)
+        if existing.count != dayPlans[di].blocks.count { dayPlans[di].blocks = existing }
 
         // Preserve anything already started/closed. If travel or its habit has started,
         // preserve the whole travel+habit pair so a refresh/re-open can never add travel twice.
@@ -254,7 +295,7 @@ final class AppStore: ObservableObject {
                    candidate.kind == .task { return false }
                 return true
             }
-        dayPlans[di].blocks = (preserved + rebuilt).sorted {$0.start < $1.start}
+        dayPlans[di].blocks = deduplicatedFixedBlocks(preserved + rebuilt).sorted {$0.start < $1.start}
         save()
     }
 
@@ -404,6 +445,20 @@ final class AppStore: ObservableObject {
 
     private func flexibleHabitAlreadyPlannedToday(_ habit: Habit) -> Bool {
         todayPlan?.blocks.contains(where: {$0.kind == .habit && $0.sourceID == habit.id}) ?? false
+    }
+
+    func makeBackup() -> AlsagierBackup {
+        AlsagierBackup(projects: projects, tasks: tasks, habits: habits, dayPlans: dayPlans, settings: settings)
+    }
+
+    func restoreBackup(_ backup: AlsagierBackup) {
+        projects = backup.projects
+        tasks = backup.tasks
+        habits = backup.habits
+        dayPlans = backup.dayPlans
+        settings = backup.settings
+        removeDuplicateFixedBlocksFromStoredPlans()
+        save()
     }
 
     func save() {

@@ -6,7 +6,7 @@ settings:
   base:
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     MARKETING_VERSION: "5.1"
-    CURRENT_PROJECT_VERSION: "9"
+    CURRENT_PROJECT_VERSION: "11"
 
 targets:
   Alsagier:
@@ -16,6 +16,7 @@ targets:
     sources:
       - AlsagierApp.swift
       - AlsagierActivityAttributes.swift
+      - BackupDocument.swift
       - AppStore.swift
       - CalendarManager.swift
       - HabitsView.swift

@@ -290,17 +290,24 @@ private struct SwipeableTimelineCard: View {
                 .contentShape(Rectangle())
                 .onTapGesture { if abs(offset) < 5 { onTap() } else { withAnimation{offset=0} } }
                 .offset(x:offset)
-                .gesture(DragGesture(minimumDistance:12)
+                .simultaneousGesture(DragGesture(minimumDistance:16)
                     .onChanged { value in
                         guard !block.isCompleted && !block.isSkipped else { return }
-                        let x=value.translation.width
+                        let x = value.translation.width
+                        let y = value.translation.height
+                        // Only react to a clearly horizontal swipe. Vertical drags belong
+                        // to the Today ScrollView and must never be captured by the card.
+                        guard abs(x) > abs(y) * 1.35 else { return }
                         if x > 0 && canDone { offset=min(92,x) }
                         else if x < 0 && canModify { offset=max(-145,x) }
                     }
                     .onEnded { value in
+                        let x = value.translation.width
+                        let y = value.translation.height
+                        guard abs(x) > abs(y) * 1.35 else { return }
                         withAnimation(.snappy) {
-                            if value.translation.width > 55 && canDone { offset=92 }
-                            else if value.translation.width < -55 && canModify { offset = -145 }
+                            if x > 55 && canDone { offset=92 }
+                            else if x < -55 && canModify { offset = -145 }
                             else { offset=0 }
                         }
                     })

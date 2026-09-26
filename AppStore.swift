@@ -235,6 +235,16 @@ final class AppStore: ObservableObject {
         let rebuilt = buildSchedule(calendar: calendar, prayers: prayers, from: rebuildStart)
             .filter { candidate in
                 if preserved.contains(where: {$0.id == candidate.id}) { return false }
+                // Calendar and prayer blocks are regenerated with fresh UUIDs. Compare
+                // their actual identity instead so Refresh/Re-open cannot duplicate a
+                // prayer (for example Isha) or a fixed calendar event already preserved.
+                if (candidate.kind == .prayer || candidate.kind == .calendar) &&
+                   preserved.contains(where: { existing in
+                       existing.kind == candidate.kind &&
+                       existing.title == candidate.title &&
+                       abs(existing.start.timeIntervalSince(candidate.start)) < 1 &&
+                       abs(existing.end.timeIntervalSince(candidate.end)) < 1
+                   }) { return false }
                 if let source = candidate.sourceID, closedSourceIDs.contains(source) { return false }
                 if let source = candidate.sourceID,
                    pairedHabitSources.contains(source),
@@ -254,7 +264,18 @@ final class AppStore: ObservableObject {
         guard let workEnd = cal.date(bySettingHour: settings.workEndHour, minute: 0, second: 0, of: day),
               let personalEnd = cal.date(bySettingHour: settings.personalEndHour, minute: 0, second: 0, of: day) else { return [] }
 
-        var result = (calendar + prayers).filter {$0.end > start && $0.start < personalEnd}
+        // Fixed inputs may be refreshed more than once and therefore carry new UUIDs.
+        // Normalize them by kind/title/time before scheduling flexible work.
+        var result: [ScheduleBlock] = []
+        for fixed in (calendar + prayers).filter({$0.end > start && $0.start < personalEnd}).sorted(by: {$0.start < $1.start}) {
+            let duplicate = result.contains { existing in
+                existing.kind == fixed.kind &&
+                existing.title == fixed.title &&
+                abs(existing.start.timeIntervalSince(fixed.start)) < 1 &&
+                abs(existing.end.timeIntervalSince(fixed.end)) < 1
+            }
+            if !duplicate { result.append(fixed) }
+        }
         var cursor = start
 
         func slot(after proposed: Date, minutes: Int, limit: Date, blocks: [ScheduleBlock]) -> Date? {

@@ -46,7 +46,21 @@ private struct ProjectEditor: View {
                 if project.mode == .continuous {
                     Picker("Focus block",selection:$project.preferredBlockMinutes){ForEach([15,30,45,60,90],id:\.self){Text("\($0) min").tag($0)}}
                 }
-                Picker("Color",selection:$project.color){ForEach(ProjectColor.projectChoices){Text($0.rawValue.capitalized).foregroundStyle($0.color).tag($0)}}
+                Section("Color") {
+                    LazyVGrid(columns:Array(repeating:GridItem(.flexible()),count:5),spacing:16) {
+                        ForEach(ProjectColor.projectChoices) { choice in
+                            Button { project.color = choice } label: {
+                                ZStack {
+                                    Circle().fill(choice.color).frame(width:38,height:38)
+                                    if project.color == choice {
+                                        Circle().stroke(.primary,lineWidth:3).frame(width:46,height:46)
+                                        Image(systemName:"checkmark").font(.caption.bold()).foregroundStyle(.white)
+                                    }
+                                }.frame(width:50,height:50)
+                            }.buttonStyle(.plain).accessibilityLabel(choice.rawValue.capitalized)
+                        }
+                    }.padding(.vertical,6)
+                }
             }.navigationTitle(project.name.isEmpty ? "New Project":"Edit Project")
             .toolbar {
                 ToolbarItem(placement:.cancellationAction){Button("Cancel"){dismiss()}}

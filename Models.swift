@@ -123,20 +123,26 @@ struct Habit: Identifiable, Codable, Equatable {
     var priority: WorkPriority = .normal
     var isEnabled = true
     var travelMinutes: Int = 0
+    var tracksWalking: Bool = false
+    var stepTarget: Int = 10000
+    var walkingMinutesTarget: Int = 60
 
     enum CodingKeys: String, CodingKey {
         case id, name, duration, mode, weekdays, timesPerWeek, earliestHour, latestHour
-        case preferredPeriod, priority, isEnabled, travelMinutes
+        case preferredPeriod, priority, isEnabled, travelMinutes, tracksWalking, stepTarget, walkingMinutesTarget
     }
 
     init(id: UUID = UUID(), name: String, duration: Int = 30, mode: HabitScheduleMode = .fixed,
          weekdays: Set<Int> = [], timesPerWeek: Int = 3, earliestHour: Int = 6, latestHour: Int = 23,
          preferredPeriod: PreferredPeriod = .anytime, priority: WorkPriority = .normal,
-         isEnabled: Bool = true, travelMinutes: Int? = nil) {
+         isEnabled: Bool = true, travelMinutes: Int? = nil, tracksWalking: Bool? = nil,
+         stepTarget: Int = 10000, walkingMinutesTarget: Int = 60) {
         self.id=id; self.name=name; self.duration=duration; self.mode=mode; self.weekdays=weekdays
         self.timesPerWeek=timesPerWeek; self.earliestHour=earliestHour; self.latestHour=latestHour
         self.preferredPeriod=preferredPeriod; self.priority=priority; self.isEnabled=isEnabled
         self.travelMinutes = travelMinutes ?? (name.localizedCaseInsensitiveContains("gym") ? 30 : 0)
+        self.tracksWalking = tracksWalking ?? name.localizedCaseInsensitiveContains("walk")
+        self.stepTarget = stepTarget; self.walkingMinutesTarget = walkingMinutesTarget
     }
 
     init(from decoder: Decoder) throws {
@@ -152,8 +158,10 @@ struct Habit: Identifiable, Codable, Equatable {
         preferredPeriod = try c.decodeIfPresent(PreferredPeriod.self, forKey:.preferredPeriod) ?? .anytime
         priority = try c.decodeIfPresent(WorkPriority.self, forKey:.priority) ?? .normal
         isEnabled = try c.decodeIfPresent(Bool.self, forKey:.isEnabled) ?? true
-        travelMinutes = try c.decodeIfPresent(Int.self, forKey:.travelMinutes)
-            ?? (name.localizedCaseInsensitiveContains("gym") ? 30 : 0)
+        travelMinutes = try c.decodeIfPresent(Int.self, forKey:.travelMinutes) ?? (name.localizedCaseInsensitiveContains("gym") ? 30 : 0)
+        tracksWalking = try c.decodeIfPresent(Bool.self, forKey:.tracksWalking) ?? name.localizedCaseInsensitiveContains("walk")
+        stepTarget = try c.decodeIfPresent(Int.self, forKey:.stepTarget) ?? 10000
+        walkingMinutesTarget = try c.decodeIfPresent(Int.self, forKey:.walkingMinutesTarget) ?? 60
     }
 }
 

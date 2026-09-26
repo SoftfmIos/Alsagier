@@ -60,6 +60,35 @@ final class AppStore: ObservableObject {
         if let i = habits.firstIndex(where: {$0.id == h.id}) { habits[i].isEnabled.toggle(); save() }
     }
 
+    func weeklyHabitProgress(_ habit: Habit, on date: Date = Date()) -> (completed: Int, target: Int) {
+        let interval = Calendar.current.dateInterval(of: .weekOfYear, for: date)
+        return (completedHabitCount(habit, in: interval), habit.timesPerWeek)
+    }
+
+    func applyWalkingHealth(steps: Int, walkingMinutes: Int, calendar: [ScheduleBlock], prayers: [ScheduleBlock]) {
+        guard let di = todayIndex, dayPlans[di].endedAt == nil else { return }
+        var completedSomething = false
+        var changed = false
+        for habit in habits where habit.isEnabled && habit.tracksWalking {
+            let stepDone = habit.stepTarget > 0 && steps >= habit.stepTarget
+            let minuteDone = habit.walkingMinutesTarget > 0 && walkingMinutes >= habit.walkingMinutesTarget
+            let matching = dayPlans[di].blocks.indices.filter {
+                dayPlans[di].blocks[$0].kind == .habit && dayPlans[di].blocks[$0].sourceID == habit.id
+            }
+            for bi in matching {
+                if (stepDone || minuteDone) && !dayPlans[di].blocks[bi].isCompleted {
+                    dayPlans[di].blocks[bi].isCompleted = true
+                    completedSomething = true
+                }
+                let progress = weeklyHabitProgress(habit)
+                let text = "\(steps.formatted())/\(habit.stepTarget.formatted()) steps • \(walkingMinutes)/\(habit.walkingMinutesTarget)m • \(progress.completed)/\(progress.target) this week"
+                if dayPlans[di].blocks[bi].subtitle != text { dayPlans[di].blocks[bi].subtitle = text; changed = true }
+            }
+        }
+        if completedSomething || changed { save() }
+        if completedSomething { rebalanceFuture(calendar: calendar, prayers: prayers) }
+    }
+
     func startDay(calendar: [ScheduleBlock], prayers: [ScheduleBlock]) {
         guard todayPlan == nil else { return }
         let now = Date()
@@ -76,6 +105,11 @@ final class AppStore: ObservableObject {
         dayPlans[di].blocks[bi].isCompleted = true
         if block.kind == .task, let source = block.sourceID,
            let ti = tasks.firstIndex(where: {$0.id == source}) { tasks[ti].isCompleted = true }
+        if block.kind == .habit, let source = block.sourceID {
+            for i in dayPlans[di].blocks.indices where dayPlans[di].blocks[i].sourceID == source && dayPlans[di].blocks[i].kind == .travel {
+                dayPlans[di].blocks[i].isCompleted = true
+            }
+        }
         save()
         rebalanceFuture(calendar: calendar, prayers: prayers)
     }
@@ -85,6 +119,11 @@ final class AppStore: ObservableObject {
               let bi = dayPlans[di].blocks.firstIndex(where: {$0.id == block.id}),
               !block.isLocked else { return }
         dayPlans[di].blocks[bi].isSkipped = true
+        if block.kind == .habit, let source = block.sourceID {
+            for i in dayPlans[di].blocks.indices where dayPlans[di].blocks[i].sourceID == source && dayPlans[di].blocks[i].start >= Date() {
+                dayPlans[di].blocks[i].isSkipped = true
+            }
+        }
         save()
         rebalanceFuture(calendar: calendar, prayers: prayers)
     }
@@ -282,7 +321,9 @@ final class AppStore: ObservableObject {
         for habit in habits.filter({$0.isEnabled && $0.mode == .fixed && $0.weekdays.contains(weekday)}) {
             let earliest = cal.date(bySettingHour: habit.earliestHour, minute: 0, second: 0, of: day) ?? start
             let latest = cal.date(bySettingHour: habit.latestHour, minute: 0, second: 0, of: day) ?? personalEnd
-            appendHabit(habit, preferred: max(start, earliest), latest: min(latest, personalEnd), subtitle: "Habit")
+            let progress = weeklyHabitProgress(habit, on: day)
+            appendHabit(habit, preferred: max(start, earliest), latest: min(latest, personalEnd),
+                        subtitle: "\(progress.completed)/\(progress.target) completed this week")
         }
 
         // Flexible weekly habits. Schedule today when remaining sessions need available days.

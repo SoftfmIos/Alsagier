@@ -21,13 +21,16 @@ final class LiveActivityManager {
         let visible = Array(upcoming.prefix(8)).map {
             AlsagierActivityAttributes.RemainingItem(
                 title: $0.title,
+                subtitle: $0.subtitle ?? "",
                 time: $0.start,
+                end: $0.end,
                 colorName: colorName(for: $0),
                 kindName: $0.kind.rawValue
             )
         }
 
         let state = AlsagierActivityAttributes.ContentState(
+            blockID: primary.id.uuidString,
             title: primary.title,
             subtitle: primary.subtitle ?? "",
             start: primary.start,
@@ -36,7 +39,8 @@ final class LiveActivityManager {
             remaining: visible,
             remainingCount: upcoming.count,
             colorName: colorName(for: primary),
-            kindName: primary.kind.rawValue
+            kindName: primary.kind.rawValue,
+            actionable: primary.kind != .prayer && !primary.isLocked
         )
         let content = ActivityContent(state: state, staleDate: state.end)
 

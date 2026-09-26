@@ -34,5 +34,18 @@
 	<string>Alsagier sends reminders shortly before scheduled blocks.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Alsagier reads your steps and walking workouts to track walking habit progress and automatically complete your walking target.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.softfm.alsagierapp</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>alsagier</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -6,7 +6,7 @@ settings:
   base:
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     MARKETING_VERSION: "5.1"
-    CURRENT_PROJECT_VERSION: "6"
+    CURRENT_PROJECT_VERSION: "7"
 
 targets:
   Alsagier:
@@ -19,6 +19,7 @@ targets:
       - AppStore.swift
       - CalendarManager.swift
       - HabitsView.swift
+      - HealthManager.swift
       - LiveActivityManager.swift
       - MainTabView.swift
       - Models.swift
@@ -29,6 +30,8 @@ targets:
       - TasksView.swift
       - TodayView.swift
       - path: Assets.xcassets
+        buildPhase: resources
+      - path: PrayerChime.wav
         buildPhase: resources
     dependencies:
       - target: AlsagierLiveActivity

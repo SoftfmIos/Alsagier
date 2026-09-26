@@ -10,6 +10,8 @@ struct TodayView: View {
     @State private var history = false
     @State private var confirmEnd = false
     @State private var refreshing = false
+    @State private var actionBlock: ScheduleBlock?
+    @StateObject private var health = HealthManager.shared
 
     var body: some View {
         NavigationStack {
@@ -31,9 +33,20 @@ struct TodayView: View {
             } message: {
                 Text("Your progress will be saved. You can reopen today if you need to continue.")
             }
-            .task { await refreshLiveActivity() }
+            .confirmationDialog(actionBlock?.title ?? "Schedule action", isPresented: Binding(
+                get:{ actionBlock != nil }, set:{ if !$0 { actionBlock=nil } }), titleVisibility:.visible) {
+                if let b=actionBlock, canClose(b) { Button("Done") { close(b); actionBlock=nil } }
+                if let b=actionBlock, !b.isLocked { Button("+15 min") { extend(b); actionBlock=nil } }
+                if let b=actionBlock, !b.isLocked { Button("Skip Today") { skip(b); actionBlock=nil } }
+                Button("Cancel",role:.cancel) { actionBlock=nil }
+            }
+            .task {
+                await health.requestAccess()
+                await refreshHealthAndSchedule()
+                await refreshLiveActivity()
+            }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { Task { await refreshLiveActivity() } }
+                if phase == .active { Task { await refreshHealthAndSchedule(); await refreshLiveActivity() } }
             }
         }
     }
@@ -149,18 +162,9 @@ struct TodayView: View {
         } else {
             LazyVStack(spacing:9) {
                 ForEach(blocks) { b in
-                    TimelineCard(block:b)
-                        .swipeActions(edge:.leading,allowsFullSwipe:true) {
-                            if canClose(b) && !b.isCompleted && !b.isSkipped {
-                                Button("Close") { close(b) }.tint(.green)
-                            }
-                        }
-                        .swipeActions {
-                            if !b.isLocked && !b.isCompleted && !b.isSkipped {
-                                Button("+15") { extend(b) }.tint(.blue)
-                                Button("Skip") { skip(b) }.tint(.orange)
-                            }
-                        }
+                    SwipeableTimelineCard(block:b,
+                        onTap:{ if !b.isCompleted && !b.isSkipped && b.kind != .prayer { actionBlock=b } },
+                        onDone:{ close(b) }, onExtend:{ extend(b) }, onSkip:{ skip(b) })
                 }
             }
         }
@@ -229,6 +233,15 @@ struct TodayView: View {
         refreshEverything()
     }
 
+    private func refreshHealthAndSchedule() async {
+        guard store.isDayActive else { return }
+        await health.refreshToday()
+        calendar.loadToday()
+        await prayers.refresh()
+        store.applyWalkingHealth(steps:health.stepsToday, walkingMinutes:health.walkingMinutesToday,
+                                 calendar:calendar.todayBlocks, prayers:prayers.blocks)
+    }
+
     private func refreshEverything() {
         Task { await refreshAfterScheduleChange() }
     }
@@ -244,6 +257,57 @@ struct TodayView: View {
     private func refreshLiveActivity() async {
         await LiveActivityManager.shared.refresh(blocks:blocks,dayActive:store.isDayActive)
     }
+}
+
+private struct SwipeableTimelineCard: View {
+    let block: ScheduleBlock
+    let onTap: () -> Void
+    let onDone: () -> Void
+    let onExtend: () -> Void
+    let onSkip: () -> Void
+    @State private var offset: CGFloat = 0
+
+    var body: some View {
+        ZStack {
+            HStack(spacing:0) {
+                if offset > 0 && canDone {
+                    Button(action:{ onDone(); withAnimation{offset=0} }) {
+                        Label("Done",systemImage:"checkmark").frame(maxHeight:.infinity).padding(.horizontal,18)
+                    }.buttonStyle(.plain).foregroundStyle(.white).background(.green)
+                    Spacer()
+                } else {
+                    Spacer()
+                    if offset < 0 && canModify {
+                        Button(action:{ onExtend(); withAnimation{offset=0} }) { Text("+15m").frame(maxHeight:.infinity).padding(.horizontal,15) }
+                            .buttonStyle(.plain).foregroundStyle(.white).background(.blue)
+                        Button(action:{ onSkip(); withAnimation{offset=0} }) { Text("Skip").frame(maxHeight:.infinity).padding(.horizontal,15) }
+                            .buttonStyle(.plain).foregroundStyle(.white).background(.orange)
+                    }
+                }
+            }.clipShape(RoundedRectangle(cornerRadius:15))
+
+            TimelineCard(block:block)
+                .contentShape(Rectangle())
+                .onTapGesture { if abs(offset) < 5 { onTap() } else { withAnimation{offset=0} } }
+                .offset(x:offset)
+                .gesture(DragGesture(minimumDistance:12)
+                    .onChanged { value in
+                        guard !block.isCompleted && !block.isSkipped else { return }
+                        let x=value.translation.width
+                        if x > 0 && canDone { offset=min(92,x) }
+                        else if x < 0 && canModify { offset=max(-145,x) }
+                    }
+                    .onEnded { value in
+                        withAnimation(.snappy) {
+                            if value.translation.width > 55 && canDone { offset=92 }
+                            else if value.translation.width < -55 && canModify { offset = -145 }
+                            else { offset=0 }
+                        }
+                    })
+        }.clipped()
+    }
+    private var canDone:Bool { block.kind != .prayer }
+    private var canModify:Bool { !block.isLocked && block.kind != .prayer }
 }
 
 private struct TimelineCard: View {

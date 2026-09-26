@@ -21,7 +21,7 @@ final class NotificationManager: ObservableObject {
             let content = UNMutableNotificationContent()
             content.title = "Next in \(minutesBefore) minutes"
             content.body = block.subtitle.map {"\(block.title) — \($0)"} ?? block.title
-            content.sound = .default
+            content.sound = block.kind == .prayer ? UNNotificationSound(named:UNNotificationSoundName("PrayerChime.wav")) : .default
             let parts = Calendar.current.dateComponents([.year,.month,.day,.hour,.minute,.second], from: fire)
             let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
             try? await center.add(UNNotificationRequest(identifier:"alsagier.block.\(block.id.uuidString)",content:content,trigger:trigger))

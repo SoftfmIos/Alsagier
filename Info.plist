@@ -35,7 +35,9 @@
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Alsagier reads your steps and walking workouts to track walking habit progress and automatically complete your walking target.</string>
+	<string>Alsagier reads your step count and walking activity from Apple Health to track progress toward your personal walking habits and daily goals.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Alsagier uses HealthKit access to support progress and completion tracking for your personal walking habits. Alsagier does not write health data to Apple Health.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -47,10 +49,5 @@
 			</array>
 		</dict>
 	</array>
-<key>NSHealthShareUsageDescription</key>
-<string>Alsagier reads your step count and walking activity to track progress toward your personal walking habits and daily goals.</string>
-
-<key>NSHealthUpdateUsageDescription</key>
-<string>Alsagier uses HealthKit access to support completion and progress tracking for your personal walking habits and daily goals.</string>
 </dict>
 </plist>

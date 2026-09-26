@@ -9,11 +9,12 @@ struct AlsagierBackup: Codable {
     var habits: [Habit]
     var dayPlans: [DayPlan]
     var insights: [WorkInsight] = []
+    var habitCompletions: [HabitCompletion] = []
     var settings: AppSettings
 
-    enum CodingKeys: String, CodingKey { case version, createdAt, projects, tasks, habits, dayPlans, insights, settings }
-    init(version: Int = 1, createdAt: Date = Date(), projects: [Project], tasks: [ExecutiveTask], habits: [Habit], dayPlans: [DayPlan], insights: [WorkInsight] = [], settings: AppSettings) {
-        self.version=version; self.createdAt=createdAt; self.projects=projects; self.tasks=tasks; self.habits=habits; self.dayPlans=dayPlans; self.insights=insights; self.settings=settings
+    enum CodingKeys: String, CodingKey { case version, createdAt, projects, tasks, habits, dayPlans, insights, habitCompletions, settings }
+    init(version: Int = 1, createdAt: Date = Date(), projects: [Project], tasks: [ExecutiveTask], habits: [Habit], dayPlans: [DayPlan], insights: [WorkInsight] = [], habitCompletions: [HabitCompletion] = [], settings: AppSettings) {
+        self.version=version; self.createdAt=createdAt; self.projects=projects; self.tasks=tasks; self.habits=habits; self.dayPlans=dayPlans; self.insights=insights; self.habitCompletions=habitCompletions; self.settings=settings
     }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -22,6 +23,7 @@ struct AlsagierBackup: Codable {
         projects = try c.decode([Project].self, forKey:.projects); tasks = try c.decode([ExecutiveTask].self, forKey:.tasks)
         habits = try c.decode([Habit].self, forKey:.habits); dayPlans = try c.decode([DayPlan].self, forKey:.dayPlans)
         insights = try c.decodeIfPresent([WorkInsight].self, forKey:.insights) ?? []
+        habitCompletions = try c.decodeIfPresent([HabitCompletion].self, forKey:.habitCompletions) ?? []
         settings = try c.decode(AppSettings.self, forKey:.settings)
     }
 }

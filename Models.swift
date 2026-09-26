@@ -182,6 +182,13 @@ struct ScheduleBlock: Identifiable, Codable, Equatable {
     var durationMinutes: Int { max(0, Int(end.timeIntervalSince(start) / 60)) }
 }
 
+struct HabitCompletion: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var habitID: UUID
+    var date: Date
+    var source: String = "manual"
+}
+
 struct WorkInsight: Identifiable, Codable, Equatable {
     var id = UUID()
     var projectID: UUID?
@@ -190,6 +197,7 @@ struct WorkInsight: Identifiable, Codable, Equatable {
     var taskName: String?
     var blockKind: BlockKind
     var date: Date
+    var startedAt: Date? = nil
     var plannedMinutes: Int
     var actualMinutes: Int
     var happiness: Int?
@@ -210,4 +218,17 @@ struct AppSettings: Codable, Equatable {
     var reminderMinutes = 2
     var callsMinutes = 30
     var emailMinutes = 30
+    var dadJokesEnabled = true
+
+    enum CodingKeys: String, CodingKey { case workEndHour, personalEndHour, reminderMinutes, callsMinutes, emailMinutes, dadJokesEnabled }
+    init() {}
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        workEndHour = try c.decodeIfPresent(Int.self, forKey:.workEndHour) ?? 16
+        personalEndHour = try c.decodeIfPresent(Int.self, forKey:.personalEndHour) ?? 23
+        reminderMinutes = try c.decodeIfPresent(Int.self, forKey:.reminderMinutes) ?? 2
+        callsMinutes = try c.decodeIfPresent(Int.self, forKey:.callsMinutes) ?? 30
+        emailMinutes = try c.decodeIfPresent(Int.self, forKey:.emailMinutes) ?? 30
+        dadJokesEnabled = try c.decodeIfPresent(Bool.self, forKey:.dadJokesEnabled) ?? true
+    }
 }

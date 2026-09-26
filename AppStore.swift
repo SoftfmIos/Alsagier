@@ -8,6 +8,7 @@ final class AppStore: ObservableObject {
     @Published var habits: [Habit] = []
     @Published var dayPlans: [DayPlan] = []
     @Published var insights: [WorkInsight] = []
+    @Published var habitCompletions: [HabitCompletion] = []
     @Published var settings = AppSettings()
 
     private let defaults = UserDefaults.standard
@@ -17,6 +18,10 @@ final class AppStore: ObservableObject {
     private let dKey = "alsagier.v5.dayplans"
     private let sKey = "alsagier.v5.settings"
     private let iKey = "capjour.v5.insights"
+    private let hcKey = "capjour.v5.habitCompletions"
+    private let dadShownKey = "capjour.v5.dadJokes.shown"
+    private let dadDateKey = "capjour.v5.dadJokes.date"
+    private let dadIndexKey = "capjour.v5.dadJokes.index"
     private let migrationKey = "alsagier.v5.migratedV43"
 
     init() {
@@ -25,6 +30,7 @@ final class AppStore: ObservableObject {
         migrateReservedGreenProjects()
         autoCloseExpiredDay()
         removeDuplicateFixedBlocksFromStoredPlans()
+        migrateHabitCompletionsFromPlans()
     }
 
 
@@ -169,6 +175,7 @@ final class AppStore: ObservableObject {
             for bi in matching {
                 if (stepDone || minuteDone) && !dayPlans[di].blocks[bi].isCompleted {
                     dayPlans[di].blocks[bi].isCompleted = true
+                    recordHabitCompletion(habitID: habit.id, source: "health")
                     completedSomething = true
                 }
                 let progress = weeklyHabitProgress(habit)
@@ -198,6 +205,7 @@ final class AppStore: ObservableObject {
         if block.kind == .task, let source = block.sourceID,
            let ti = tasks.firstIndex(where: {$0.id == source}) { tasks[ti].isCompleted = true }
         if block.kind == .habit, let source = block.sourceID {
+            recordHabitCompletion(habitID: source, date: dayPlans[di].date, source: "manual")
             for i in dayPlans[di].blocks.indices where dayPlans[di].blocks[i].sourceID == source && dayPlans[di].blocks[i].kind == .travel {
                 dayPlans[di].blocks[i].isCompleted = true
             }
@@ -222,7 +230,7 @@ final class AppStore: ObservableObject {
         let actual = max(1, Int(ceil(actualEnd.timeIntervalSince(block.start) / 60)))
         insights.append(WorkInsight(projectID: project?.id, projectName: project?.name ?? block.title,
                                     taskID: task?.id, taskName: task?.title ?? block.subtitle, blockKind: block.kind,
-                                    date: now, plannedMinutes: block.durationMinutes, actualMinutes: actual, happiness: nil))
+                                    date: now, startedAt: block.start, plannedMinutes: block.durationMinutes, actualMinutes: actual, happiness: nil))
     }
 
     func setHappiness(for insightID: UUID, rating: Int) {
@@ -324,6 +332,7 @@ final class AppStore: ObservableObject {
         habits = []
         dayPlans = []
         insights = []
+        habitCompletions = []
         settings = AppSettings()
         defaults.set(true, forKey: migrationKey) // never resurrect V4.3 test data after reset
         save()
@@ -545,8 +554,49 @@ final class AppStore: ObservableObject {
 
     private func completedHabitCount(_ habit: Habit, in interval: DateInterval?) -> Int {
         guard let interval else { return 0 }
-        return dayPlans.filter { interval.contains($0.date) }.flatMap(\.blocks)
-            .filter {$0.kind == .habit && $0.sourceID == habit.id && $0.isCompleted}.count
+        let cal = Calendar.current
+        let days = habitCompletions.filter { $0.habitID == habit.id && interval.contains($0.date) }
+            .map { cal.startOfDay(for: $0.date) }
+        return Set(days).count
+    }
+
+    private func recordHabitCompletion(habitID: UUID, date: Date = Date(), source: String = "manual") {
+        let cal = Calendar.current
+        let day = cal.startOfDay(for: date)
+        guard !habitCompletions.contains(where: { $0.habitID == habitID && cal.isDate($0.date, inSameDayAs: day) }) else { return }
+        habitCompletions.append(HabitCompletion(habitID: habitID, date: day, source: source))
+    }
+
+    private func migrateHabitCompletionsFromPlans() {
+        var changed = false
+        let cal = Calendar.current
+        for plan in dayPlans {
+            for block in plan.blocks where block.kind == .habit && block.isCompleted {
+                guard let hid = block.sourceID else { continue }
+                let day = cal.startOfDay(for: plan.date)
+                if !habitCompletions.contains(where: { $0.habitID == hid && cal.isDate($0.date, inSameDayAs: day) }) {
+                    habitCompletions.append(HabitCompletion(habitID: hid, date: day, source: "migration")); changed = true
+                }
+            }
+        }
+        if changed { save() }
+    }
+
+    func dadJokeForToday() -> String? {
+        guard settings.dadJokesEnabled, !DadJokes.all.isEmpty else { return nil }
+        let day = Calendar.current.startOfDay(for: Date())
+        if let saved = defaults.object(forKey: dadDateKey) as? Date,
+           Calendar.current.isDate(saved, inSameDayAs: day) {
+            let idx = defaults.integer(forKey: dadIndexKey)
+            if DadJokes.all.indices.contains(idx) { return DadJokes.all[idx] }
+        }
+        var shown = defaults.array(forKey: dadShownKey) as? [Int] ?? []
+        if shown.count >= DadJokes.all.count { shown.removeAll() }
+        let remaining = DadJokes.all.indices.filter { !shown.contains($0) }
+        guard let idx = remaining.randomElement() else { return nil }
+        shown.append(idx)
+        defaults.set(shown, forKey: dadShownKey); defaults.set(day, forKey: dadDateKey); defaults.set(idx, forKey: dadIndexKey)
+        return DadJokes.all[idx]
     }
 
     private func flexibleHabitAlreadyPlannedToday(_ habit: Habit) -> Bool {
@@ -554,7 +604,7 @@ final class AppStore: ObservableObject {
     }
 
     func makeBackup() -> AlsagierBackup {
-        AlsagierBackup(projects: projects, tasks: tasks, habits: habits, dayPlans: dayPlans, insights: insights, settings: settings)
+        AlsagierBackup(projects: projects, tasks: tasks, habits: habits, dayPlans: dayPlans, insights: insights, habitCompletions: habitCompletions, settings: settings)
     }
 
     func restoreBackup(_ backup: AlsagierBackup) {
@@ -563,8 +613,10 @@ final class AppStore: ObservableObject {
         habits = backup.habits
         dayPlans = backup.dayPlans
         insights = backup.insights
+        habitCompletions = backup.habitCompletions
         settings = backup.settings
         removeDuplicateFixedBlocksFromStoredPlans()
+        migrateHabitCompletionsFromPlans()
         save()
     }
 
@@ -575,6 +627,7 @@ final class AppStore: ObservableObject {
         if let d = try? enc.encode(habits) { defaults.set(d, forKey: hKey) }
         if let d = try? enc.encode(dayPlans) { defaults.set(d, forKey: dKey) }
         if let d = try? enc.encode(insights) { defaults.set(d, forKey: iKey) }
+        if let d = try? enc.encode(habitCompletions) { defaults.set(d, forKey: hcKey) }
         if let d = try? enc.encode(settings) { defaults.set(d, forKey: sKey) }
     }
 
@@ -585,6 +638,7 @@ final class AppStore: ObservableObject {
         if let d=defaults.data(forKey:hKey), let x=try? dec.decode([Habit].self,from:d){habits=x}
         if let d=defaults.data(forKey:dKey), let x=try? dec.decode([DayPlan].self,from:d){dayPlans=x}
         if let d=defaults.data(forKey:iKey), let x=try? dec.decode([WorkInsight].self,from:d){insights=x}
+        if let d=defaults.data(forKey:hcKey), let x=try? dec.decode([HabitCompletion].self,from:d){habitCompletions=x}
         if let d=defaults.data(forKey:sKey), let x=try? dec.decode(AppSettings.self,from:d){settings=x}
     }
 

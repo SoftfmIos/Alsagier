@@ -13,6 +13,7 @@ struct TodayView: View {
     @State private var actionBlock: ScheduleBlock?
     @State private var switchBlock: ScheduleBlock?
     @State private var emotionInsight: WorkInsight?
+    @State private var dadJoke: String?
     @StateObject private var health = HealthManager.shared
 
     var body: some View {
@@ -52,6 +53,9 @@ struct TodayView: View {
                     emotionInsight=nil
                 } onSkip: { emotionInsight=nil }
             }
+            .alert("Dad Joke of the Day", isPresented: Binding(get:{ dadJoke != nil }, set:{ if !$0 { dadJoke=nil } })) {
+                Button("Let's go") { dadJoke=nil }
+            } message: { Text(dadJoke ?? "") }
             .task {
                 await health.requestAccess()
                 await refreshHealthAndSchedule()
@@ -206,6 +210,7 @@ struct TodayView: View {
         calendar.loadToday()
         await prayers.refresh()
         store.startDay(calendar:calendar.todayBlocks,prayers:prayers.blocks)
+        dadJoke = store.dadJokeForToday()
         await refreshAfterScheduleChange()
         starting=false
     }

@@ -29,6 +29,10 @@ struct MoreView:View {
                         Text("Off").tag(0); ForEach([2,5,10,15],id:\.self){Text("\($0) min").tag($0)}
                     }
                 }
+                Section("Start My Day") {
+                    Toggle("Daily Dad Joke", isOn:$draft.dadJokesEnabled)
+                    Text("One offline joke per day. No repeats until all 500 have been shown.").font(.caption).foregroundStyle(.secondary)
+                }
                 Section("Permissions") {
                     Label(calendar.authorized ? "Calendar connected":"Calendar permission needed",systemImage:"calendar")
                     Label(notifications.authorized ? "Notifications enabled":"Notifications permission needed",systemImage:"bell")
@@ -50,12 +54,12 @@ struct MoreView:View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Insights") {
-                    NavigationLink { InsightsView() } label: { Label("Work & Emotions", systemImage:"chart.line.uptrend.xyaxis") }
+                    NavigationLink { InsightsView() } label: { Label("Insights", systemImage:"chart.line.uptrend.xyaxis") }
                     Text("See actual work time and optional happiness patterns. Your data stays in CapJour.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("About") {
                     NavigationLink("About CapJour") { CapJourAboutView() }
-                    Text("Version 5.1 • Build 13").foregroundStyle(.secondary)
+                    Text("Version 5.1 • Build 14").foregroundStyle(.secondary)
                 }
             }.navigationTitle("More")
             .onAppear{draft=store.settings}
@@ -131,7 +135,7 @@ private struct CapJourAboutView: View {
 
                 Divider()
                 Text("CapJour by Softfm").font(.headline)
-                Text("Version 5.1 • Build 13").foregroundStyle(.secondary)
+                Text("Version 5.1 • Build 14").foregroundStyle(.secondary)
             }
             .padding()
         }
@@ -147,40 +151,118 @@ private struct InsightsView: View {
     private var rows: [WorkInsight] { store.insights.filter { cutoff == nil || $0.date >= cutoff! } }
     private var rated: [WorkInsight] { rows.filter { $0.happiness != nil } }
     private var totalMinutes: Int { rows.reduce(0) { $0 + $1.actualMinutes } }
-    private var avg: Double? { rated.isEmpty ? nil : Double(rated.compactMap(\.happiness).reduce(0,+))/Double(rated.count) }
-    private var grouped: [(String,Int,Double?)] {
+    private var avgEmotion: Double? { rated.isEmpty ? nil : Double(rated.compactMap(\.happiness).reduce(0,+))/Double(rated.count) }
+    private var accuracy: Double {
+        guard !rows.isEmpty else { return 0 }
+        let planned=max(1,rows.reduce(0){$0+$1.plannedMinutes})
+        let error=rows.reduce(0){$0+abs($1.actualMinutes-$1.plannedMinutes)}
+        return max(0,min(1,1-Double(error)/Double(planned)))
+    }
+    private var relevantBlocks:[ScheduleBlock] {
+        store.dayPlans.filter { cutoff == nil || $0.date >= cutoff! }.flatMap(\.blocks)
+            .filter { $0.kind == .task || $0.kind == .project }
+    }
+    private var completion: Double {
+        guard !relevantBlocks.isEmpty else { return 0 }
+        return Double(relevantBlocks.filter(\.isCompleted).count)/Double(relevantBlocks.count)
+    }
+    private var grouped: [(String,Int,Int,Double?)] {
         Dictionary(grouping: rows, by: \.projectName).map { name, items in
             let rs=items.compactMap(\.happiness)
-            return (name, items.reduce(0){$0+$1.actualMinutes}, rs.isEmpty ? nil : Double(rs.reduce(0,+))/Double(rs.count))
+            return (name,items.reduce(0){$0+$1.actualMinutes},items.count,rs.isEmpty ? nil : Double(rs.reduce(0,+))/Double(rs.count))
         }.sorted{$0.1>$1.1}
     }
-    var body: some View {
-        List {
-            Section { Picker("Range",selection:$range){ Text("7 Days").tag(7); Text("30 Days").tag(30); Text("All Time").tag(0) }.pickerStyle(.segmented) }
-            Section("Overview") {
-                LabeledContent("Actual work time",value:format(totalMinutes))
-                LabeledContent("Average happiness",value:avg.map{String(format:"%.1f / 5",$0)} ?? "—")
-                LabeledContent("Completed work blocks",value:"\(rows.count)")
-            }
-            Section("Projects") {
-                if grouped.isEmpty { Text("Complete project work to start building Insights.").foregroundStyle(.secondary) }
-                ForEach(grouped,id:\.0) { item in
-                    VStack(alignment:.leading,spacing:5) {
-                        Text(item.0).font(.headline)
-                        Text("\(format(item.1)) • Happiness \(item.2.map{String(format:"%.1f/5",$0)} ?? "—")").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            }
-            Section("Recent") {
-                ForEach(rows.sorted{$0.date>$1.date}.prefix(30)) { item in
-                    VStack(alignment:.leading,spacing:4) {
-                        Text(item.taskName ?? item.projectName)
-                        Text("\(item.actualMinutes)m actual • \(item.plannedMinutes)m planned • \(item.happiness.map{String($0)+"/5"} ?? "not rated")")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }.navigationTitle("Insights")
+    private var hourly:[(Int,Double,Int)] {
+        let groups=Dictionary(grouping:rated){Calendar.current.component(.hour,from:$0.startedAt ?? $0.date)}
+        return groups.map { h,v in (h,Double(v.compactMap(\.happiness).reduce(0,+))/Double(v.count),v.count) }.sorted{$0.0<$1.0}
     }
+    private var bestHour:(Int,Double,Int)? { hourly.filter{$0.2>=2}.max{$0.1<$1.1} ?? hourly.max{$0.1<$1.1} }
+    private var lowHour:(Int,Double,Int)? { hourly.filter{$0.2>=2}.min{$0.1<$1.1} ?? hourly.min{$0.1<$1.1} }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing:18) {
+                Picker("Range",selection:$range){ Text("7 Days").tag(7); Text("30 Days").tag(30); Text("All Time").tag(0) }.pickerStyle(.segmented)
+
+                VStack(spacing:14) {
+                    ConcentricGauge(completion:completion,accuracy:accuracy,emotion:(avgEmotion ?? 0)/5)
+                        .frame(height:220)
+                    HStack {
+                        gaugeNumber("Completion", String(format:"%.0f%%",completion*100))
+                        Spacer(); gaugeNumber("Time Accuracy",String(format:"%.0f%%",accuracy*100))
+                        Spacer(); gaugeNumber("Emotion",avgEmotion.map{String(format:"%.1f/5",$0)} ?? "—")
+                    }
+                    Divider()
+                    HStack { metric("Actual Work",format(totalMinutes)); Spacer(); metric("Completed", "\(rows.count)"); Spacer(); metric("Rated","\(rated.count)") }
+                }.padding().background(.thinMaterial,in:RoundedRectangle(cornerRadius:18))
+
+                VStack(alignment:.leading,spacing:12) {
+                    Text("When Do I Feel Best?").font(.title3.bold())
+                    if hourly.isEmpty { Text("Rate completed work to reveal your time-of-day pattern.").foregroundStyle(.secondary) }
+                    else {
+                        HStack(spacing:12) {
+                            timeCard("Best",bestHour,system:"sun.max.fill")
+                            timeCard("Lowest",lowHour,system:"moon.fill")
+                        }
+                        ForEach(hourly,id:\.0) { h,a,n in
+                            HStack { Text(hourLabel(h)).frame(width:72,alignment:.leading); ProgressView(value:a,total:5); Text(String(format:"%.1f",a)).monospacedDigit(); Text("(\(n))").font(.caption).foregroundStyle(.secondary) }
+                        }
+                        Text("Numbers in parentheses are rated sessions. Patterns describe association, not cause.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }.sectionCard()
+
+                VStack(alignment:.leading,spacing:12) {
+                    Text("Projects").font(.title3.bold())
+                    if grouped.isEmpty { Text("Complete work to start building project insights.").foregroundStyle(.secondary) }
+                    ForEach(grouped,id:\.0) { g in
+                        VStack(alignment:.leading,spacing:5) {
+                            HStack { Text(g.0).font(.headline); Spacer(); Text(format(g.1)).bold() }
+                            Text("\(g.2) completed • Emotion \(g.3.map{String(format:"%.1f/5",$0)} ?? "—")").font(.caption).foregroundStyle(.secondary)
+                        }
+                        if g.0 != grouped.last?.0 { Divider() }
+                    }
+                }.sectionCard()
+
+                VStack(alignment:.leading,spacing:12) {
+                    Text("Work History").font(.title3.bold())
+                    ForEach(rows.sorted{$0.date>$1.date}.prefix(60)) { item in
+                        VStack(alignment:.leading,spacing:4) {
+                            HStack { Text(item.taskName ?? item.projectName).font(.headline); Spacer(); Text(emotion(item.happiness)) }
+                            Text(item.projectName).font(.caption).foregroundStyle(.secondary)
+                            HStack { Text(item.date.formatted(date:.abbreviated,time:.shortened)); Spacer(); Text("Planned \(item.plannedMinutes)m → Actual \(item.actualMinutes)m") }
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Divider()
+                    }
+                }.sectionCard()
+            }.padding()
+        }.navigationTitle("Insights").background(Color(.systemGroupedBackground))
+    }
+    @ViewBuilder private func timeCard(_ title:String,_ value:(Int,Double,Int)?,system:String)->some View {
+        VStack(alignment:.leading,spacing:5) { Label(title,systemImage:system).font(.caption.bold()); if let v=value { Text(hourLabel(v.0)).font(.headline); Text(String(format:"%.1f/5 • %d ratings",v.1,v.2)).font(.caption).foregroundStyle(.secondary) } else { Text("—") } }.frame(maxWidth:.infinity,alignment:.leading).padding(12).background(Color(.secondarySystemGroupedBackground),in:RoundedRectangle(cornerRadius:12))
+    }
+    private func gaugeNumber(_ title:String,_ value:String)->some View { VStack(spacing:3){Text(value).font(.headline).monospacedDigit();Text(title).font(.caption2).foregroundStyle(.secondary)} }
+    private func metric(_ title:String,_ value:String)->some View { VStack(alignment:.leading){Text(value).font(.headline);Text(title).font(.caption).foregroundStyle(.secondary)} }
+    private func emotion(_ v:Int?)->String { guard let v else{return "—"}; return ["","😞","🙁","😐","🙂","😄"][max(1,min(5,v))] + " \(v)/5" }
+    private func hourLabel(_ h:Int)->String { let d=Calendar.current.date(bySettingHour:h,minute:0,second:0,of:Date())!; return d.formatted(date:.omitted,time:.shortened) }
     private func format(_ m:Int)->String { m < 60 ? "\(m) min" : String(format:"%dh %02dm",m/60,m%60) }
+}
+
+private struct ConcentricGauge: View {
+    let completion:Double, accuracy:Double, emotion:Double
+    var body: some View {
+        ZStack {
+            ring(value:completion,width:15).padding(6)
+            ring(value:accuracy,width:15).padding(31)
+            ring(value:emotion,width:15).padding(56)
+            VStack(spacing:2) { Text(emotion > 0 ? String(format:"%.1f",emotion*5) : "—").font(.system(size:34,weight:.bold,design:.rounded)); Text("EMOTION").font(.caption2.bold()).foregroundStyle(.secondary) }
+        }.accessibilityElement(children:.ignore).accessibilityLabel("Completion \(Int(completion*100)) percent, time accuracy \(Int(accuracy*100)) percent, emotion \(String(format:"%.1f",emotion*5)) out of 5")
+    }
+    private func ring(value:Double,width:CGFloat)->some View {
+        ZStack { Circle().stroke(Color.secondary.opacity(0.14),lineWidth:width); Circle().trim(from:0,to:max(0,min(1,value))).stroke(Color.accentColor,style:StrokeStyle(lineWidth:width,lineCap:.round)).rotationEffect(.degrees(-90)) }
+    }
+}
+
+private extension View {
+    func sectionCard()->some View { self.padding().frame(maxWidth:.infinity,alignment:.leading).background(Color(.systemBackground),in:RoundedRectangle(cornerRadius:18)) }
 }

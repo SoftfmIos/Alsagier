@@ -1,4 +1,4 @@
-# CapJour 5.1 Build 16 — Regression Baseline
+# CapJour 5.1 Build 17 — Regression Baseline
 
 Core scheduling (do not regress): Start My Day schedules flexible work from now + 10m; Calendar/prayer fixed; project priority then task priority; daily project allocation; Re-open resumes from now + 10m and reflows unfinished flexible work; completed/skipped history preserved; previously consumed project minutes remain consumed; no flexible project work after work cutoff.
 

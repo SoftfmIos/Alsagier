@@ -43,8 +43,8 @@ final class AppStore: ObservableObject {
                 if let index = result.firstIndex(where: { existing in
                     existing.kind == block.kind &&
                     existing.title == block.title &&
-                    abs(existing.start.timeIntervalSince(block.start)) < 60 &&
-                    abs(existing.end.timeIntervalSince(block.end)) < 60
+                    abs(existing.start.timeIntervalSince(block.start)) <= (block.kind == .prayer ? 5 * 60 : 60) &&
+                    abs(existing.end.timeIntervalSince(block.end)) <= (block.kind == .prayer ? 5 * 60 : 60)
                 }) {
                     // Preserve any state that may already have been recorded.
                     result[index].isCompleted = result[index].isCompleted || block.isCompleted
@@ -201,7 +201,12 @@ final class AppStore: ObservableObject {
         dayPlans[di].blocks[bi].isCompleted = true
         recordCompletionInsight(for: dayPlans[di].blocks[bi])
         if block.kind == .task, let source = block.sourceID,
-           let ti = tasks.firstIndex(where: {$0.id == source}) { tasks[ti].isCompleted = true }
+           let ti = tasks.firstIndex(where: {$0.id == source}) {
+            // A learned split remains one task. Only close the task after every scheduled
+            // segment for that source is complete; otherwise the next segment stays valid.
+            let otherOpenSegments = dayPlans[di].blocks.contains { $0.id != block.id && $0.kind == .task && $0.sourceID == source && !$0.isCompleted && !$0.isSkipped }
+            if !otherOpenSegments { tasks[ti].isCompleted = true }
+        }
         if block.kind == .habit, let source = block.sourceID {
             recordHabitCompletion(habitID: source, date: dayPlans[di].date, source: "manual")
             for i in dayPlans[di].blocks.indices where dayPlans[di].blocks[i].sourceID == source && dayPlans[di].blocks[i].kind == .travel {
@@ -384,7 +389,12 @@ final class AppStore: ObservableObject {
                    !preserved.contains(where: { $0.id == block.id })
         }
 
-        let closedSourceIDs = Set(preserved.filter {$0.isCompleted || $0.isSkipped}.compactMap(\.sourceID))
+        let closedSourceIDs = Set(preserved.compactMap { block -> UUID? in
+            guard let source = block.sourceID else { return nil }
+            if block.isSkipped { return source }
+            if block.kind == .task { return tasks.first(where: { $0.id == source })?.isCompleted == true ? source : nil }
+            return block.isCompleted ? source : nil
+        })
         let pairedHabitSources = Set(preserved.compactMap { block -> UUID? in
             guard block.kind == .travel || block.kind == .habit else { return nil }
             return block.sourceID
@@ -425,8 +435,8 @@ final class AppStore: ObservableObject {
                    preserved.contains(where: { existing in
                        existing.kind == candidate.kind &&
                        existing.title == candidate.title &&
-                       abs(existing.start.timeIntervalSince(candidate.start)) < 1 &&
-                       abs(existing.end.timeIntervalSince(candidate.end)) < 1
+                       abs(existing.start.timeIntervalSince(candidate.start)) <= (candidate.kind == .prayer ? 5 * 60 : 60) &&
+                       abs(existing.end.timeIntervalSince(candidate.end)) <= (candidate.kind == .prayer ? 5 * 60 : 60)
                    }) { return false }
                 if let source = candidate.sourceID, closedSourceIDs.contains(source) { return false }
                 if let source = candidate.sourceID,
@@ -439,6 +449,56 @@ final class AppStore: ObservableObject {
             }
         dayPlans[di].blocks = deduplicatedFixedBlocks(preserved + rebuilt).sorted {$0.start < $1.start}
         save()
+    }
+
+    // MARK: - Personalized Time Engine
+    // Learning never changes explicit settings. It only influences placement, grouping and
+    // safe splitting of flexible work. Hard constraints (Calendar, prayer and Work End) win.
+    private struct LearningSnapshot {
+        var samples: Int = 0
+        var preferredMinutes: Int = 30
+        var hourScores: [Int: Double] = [:]
+        var stayWithProjectBias: Double = 0
+    }
+
+    private func learningSnapshot(for project: Project) -> LearningSnapshot {
+        let cal = Calendar.current
+        let cutoff = cal.date(byAdding: .day, value: -90, to: Date()) ?? .distantPast
+        let rows = insights.filter { $0.projectID == project.id && $0.date >= cutoff && $0.actualMinutes > 0 }
+        guard !rows.isEmpty else { return LearningSnapshot(preferredMinutes: project.preferredBlockMinutes) }
+
+        let actuals = rows.map(\.actualMinutes).sorted()
+        let median = actuals[actuals.count / 2]
+        let rounded = max(15, min(90, Int((Double(median) / 15.0).rounded()) * 15))
+        var byHour: [Int: [Double]] = [:]
+        for row in rows {
+            guard let when = row.startedAt else { continue }
+            let hour = cal.component(.hour, from: when)
+            let accuracy = 1.0 - min(1.0, abs(Double(row.actualMinutes - row.plannedMinutes)) / Double(max(15, row.plannedMinutes)))
+            let feeling = row.happiness.map { Double($0 - 1) / 4.0 } ?? 0.5
+            byHour[hour, default: []].append(accuracy * 0.45 + feeling * 0.55)
+        }
+        var hourScores: [Int: Double] = [:]
+        for (hour, values) in byHour where values.count >= 3 { hourScores[hour] = values.reduce(0,+) / Double(values.count) }
+
+        // Learn whether this user tends to succeed when staying in the same project versus switching.
+        var stayGood = 0, stayTotal = 0, switchGood = 0, switchTotal = 0
+        for plan in dayPlans where plan.date >= cutoff {
+            let work = plan.blocks.filter { $0.kind == .task || $0.kind == .project }.sorted { $0.start < $1.start }
+            var previousPID: UUID?
+            for block in work {
+                let pid: UUID? = block.kind == .project ? block.sourceID : block.sourceID.flatMap { tid in tasks.first(where: { $0.id == tid })?.projectID }
+                guard let pid else { continue }
+                if let previousPID {
+                    if pid == previousPID { stayTotal += 1; if block.isCompleted { stayGood += 1 } }
+                    else { switchTotal += 1; if block.isCompleted { switchGood += 1 } }
+                }
+                previousPID = pid
+            }
+        }
+        let stayRate = stayTotal >= 3 ? Double(stayGood) / Double(stayTotal) : 0.5
+        let switchRate = switchTotal >= 3 ? Double(switchGood) / Double(switchTotal) : 0.5
+        return LearningSnapshot(samples: rows.count, preferredMinutes: rounded, hourScores: hourScores, stayWithProjectBias: stayRate - switchRate)
     }
 
     private func buildSchedule(calendar: [ScheduleBlock], prayers: [ScheduleBlock], from start: Date,
@@ -455,8 +515,8 @@ final class AppStore: ObservableObject {
             let duplicate = result.contains { existing in
                 existing.kind == fixed.kind &&
                 existing.title == fixed.title &&
-                abs(existing.start.timeIntervalSince(fixed.start)) < 1 &&
-                abs(existing.end.timeIntervalSince(fixed.end)) < 1
+                abs(existing.start.timeIntervalSince(fixed.start)) <= (fixed.kind == .prayer ? 5 * 60 : 60) &&
+                abs(existing.end.timeIntervalSince(fixed.end)) <= (fixed.kind == .prayer ? 5 * 60 : 60)
             }
             if !duplicate { result.append(fixed) }
         }
@@ -478,32 +538,88 @@ final class AppStore: ObservableObject {
             $0.priority.rank == $1.priority.rank ? $0.name < $1.name : $0.priority.rank < $1.priority.rank
         }
 
-        // Keep a project together where possible to reduce context switching.
+        func projectID(for block: ScheduleBlock) -> UUID? {
+            if block.kind == .project { return block.sourceID }
+            if block.kind == .task, let tid = block.sourceID { return tasks.first(where: { $0.id == tid })?.projectID }
+            return nil
+        }
+
+        // Search the whole valid work horizon instead of blindly filling the first blank.
+        // Historical behavior influences the score, but hard constraints always remain absolute.
+        func bestSlot(for project: Project, minutes: Int, blocks: [ScheduleBlock], learning: LearningSnapshot) -> Date? {
+            let step: TimeInterval = 15 * 60
+            var candidate = start
+            var best: (Date, Double)?
+            while candidate.addingTimeInterval(TimeInterval(minutes * 60)) <= workEnd {
+                let end = candidate.addingTimeInterval(TimeInterval(minutes * 60))
+                let conflicts = blocks.contains { candidate < $0.end && end > $0.start }
+                if !conflicts {
+                    let hour = cal.component(.hour, from: candidate)
+                    var score = learning.hourScores[hour, default: 0.5] * (learning.samples >= 3 ? 3.0 : 0.4)
+
+                    // Personalized context switching: reward staying together only when this user's
+                    // history supports it; otherwise a switch is not penalized.
+                    let previous = blocks.filter { ($0.kind == .task || $0.kind == .project) && $0.end <= candidate }
+                        .max(by: { $0.end < $1.end })
+                    if let previousPID = previous.flatMap({ projectID(for: $0) }) {
+                        if previousPID == project.id { score += learning.stayWithProjectBias * 1.5 }
+                        else { score -= max(0, learning.stayWithProjectBias) * 0.7 }
+                    }
+
+                    // A smart plan may deliberately preserve breathing room before a fixed commitment.
+                    if let nextFixed = blocks.filter({ ($0.kind == .calendar || $0.kind == .prayer) && $0.start >= end }).min(by: {$0.start < $1.start}) {
+                        let gap = nextFixed.start.timeIntervalSince(end) / 60
+                        if gap >= 5 && gap <= 15 { score += 0.35 }
+                        if gap > 0 && gap < 5 { score -= 0.6 }
+                    }
+                    // When evidence is equal, prefer earlier work; learning can still move it later.
+                    score -= candidate.timeIntervalSince(start) / 3600.0 * 0.025
+                    if best == nil || score > best!.1 { best = (candidate, score) }
+                }
+                candidate = candidate.addingTimeInterval(step)
+            }
+            return best?.0
+        }
+
         for project in active {
-            // Preserve the daily allocation across Start/Refresh/Re-open.
-            // Re-open only schedules the allocation that is still genuinely remaining.
             var used = min(project.dailyMinutes, consumedProjectMinutes[project.id, default: 0])
+            let learning = learningSnapshot(for: project)
             if project.mode == .taskBased {
                 let pending = tasks.filter {!$0.isCompleted && $0.projectID == project.id}.sorted {
                     $0.priority.rank == $1.priority.rank ? $0.createdAt < $1.createdAt : $0.priority.rank < $1.priority.rank
                 }
                 for task in pending where used < project.dailyMinutes {
-                    let minutes = min(task.duration, project.dailyMinutes - used)
-                    guard minutes > 0, let s = slot(after: cursor, minutes: minutes, limit: workEnd, blocks: result) else { continue }
-                    let e = s.addingTimeInterval(TimeInterval(minutes * 60))
-                    result.append(ScheduleBlock(sourceID: task.id, title: project.name, subtitle: task.title,
-                                                start: s, end: e, kind: .task, projectColor: project.color, isLocked: false))
-                    cursor = e; used += minutes
+                    let available = min(task.duration, project.dailyMinutes - used)
+                    guard available > 0 else { continue }
+
+                    // With enough personal evidence, long work may be split into the block size this
+                    // user actually handles well. The task remains one task and the UI explains why.
+                    let learnedSplit = learning.samples >= 4 && available >= 60 && learning.preferredMinutes + 15 <= available
+                    let segmentSize = learnedSplit ? learning.preferredMinutes : available
+                    let segmentCount = Int(ceil(Double(available) / Double(segmentSize)))
+                    var remaining = available
+                    var segment = 1
+                    while remaining > 0 && used < project.dailyMinutes {
+                        let minutes = min(segmentSize, remaining)
+                        guard let s = bestSlot(for: project, minutes: minutes, blocks: result, learning: learning) else { break }
+                        let e = s.addingTimeInterval(TimeInterval(minutes * 60))
+                        let note = segmentCount > 1 ? "\(task.title) • Part \(segment)/\(segmentCount) • Split for your work pattern" : task.title
+                        result.append(ScheduleBlock(sourceID: task.id, title: project.name, subtitle: note,
+                                                    start: s, end: e, kind: .task, projectColor: project.color, isLocked: false))
+                        used += minutes; remaining -= minutes; segment += 1
+                    }
                 }
             } else {
                 var remaining = max(0, project.dailyMinutes - used)
+                let learned = learning.samples >= 4 ? learning.preferredMinutes : project.preferredBlockMinutes
                 while remaining > 0 {
-                    let minutes = min(project.preferredBlockMinutes, remaining)
-                    guard let s = slot(after: cursor, minutes: minutes, limit: workEnd, blocks: result) else { break }
+                    let minutes = min(learned, remaining)
+                    guard let s = bestSlot(for: project, minutes: minutes, blocks: result, learning: learning) else { break }
                     let e = s.addingTimeInterval(TimeInterval(minutes * 60))
-                    result.append(ScheduleBlock(sourceID: project.id, title: project.name, subtitle: "Focus session",
+                    let subtitle = learning.samples >= 4 && learned != project.preferredBlockMinutes ? "Focus session • Personalized block" : "Focus session"
+                    result.append(ScheduleBlock(sourceID: project.id, title: project.name, subtitle: subtitle,
                                                 start: s, end: e, kind: .project, projectColor: project.color, isLocked: false))
-                    cursor = e; remaining -= minutes
+                    remaining -= minutes; used += minutes
                 }
             }
         }

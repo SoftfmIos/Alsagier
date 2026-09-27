@@ -59,7 +59,7 @@ struct MoreView:View {
                 }
                 Section("About") {
                     NavigationLink("About CapJour") { CapJourAboutView() }
-                    Text("Version 5.1 • Build 16").foregroundStyle(.secondary)
+                    Text("Version 5.1 • Build 17").foregroundStyle(.secondary)
                 }
             }.navigationTitle("More")
             .onAppear{draft=store.settings}
@@ -144,7 +144,7 @@ private struct CapJourAboutView: View {
 
                 Divider()
                 Text("CapJour by Softfm").font(.headline)
-                Text("Version 5.1 • Build 16").foregroundStyle(.secondary)
+                Text("Version 5.1 • Build 17").foregroundStyle(.secondary)
             }
             .padding()
         }

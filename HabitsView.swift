@@ -7,6 +7,8 @@ struct HabitsView:View {
     @StateObject private var health = HealthManager.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var editing:Habit?
+    @State private var healthMessage:String?
+    @State private var isRefreshingHealth = false
 
     var body:some View {
         NavigationStack {
@@ -21,7 +23,10 @@ struct HabitsView:View {
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Button("Refresh") { Task { await refreshHealth() } }.font(.caption)
+                            Button { Task { await refreshHealth(showConfirmation: true) } } label: {
+                                if isRefreshingHealth { ProgressView().controlSize(.small) }
+                                else { Text("Refresh") }
+                            }.font(.caption).disabled(isRefreshingHealth)
                         }
                     }
                 }
@@ -61,6 +66,9 @@ struct HabitsView:View {
             .toolbar{Button{editing=Habit(name:"")}label:{Image(systemName:"plus")}}
             .sheet(item:$editing){HabitEditor(habit:$0)}
             .task { await health.requestAccess(); await refreshHealth() }
+            .alert("Apple Health", isPresented: Binding(get: { healthMessage != nil }, set: { if !$0 { healthMessage = nil } })) {
+                Button("OK", role: .cancel) { healthMessage = nil }
+            } message: { Text(healthMessage ?? "") }
             .onChange(of:scenePhase) { _, phase in if phase == .active { Task { await refreshHealth() } } }
             .refreshable { await refreshHealth() }
         }
@@ -89,8 +97,18 @@ struct HabitsView:View {
         }
     }
 
-    private func refreshHealth() async {
+    private func refreshHealth(showConfirmation: Bool = false) async {
+        if showConfirmation { isRefreshingHealth = true }
         await health.refreshToday()
+        if showConfirmation {
+            isRefreshingHealth = false
+            if health.authorized {
+                let workout = health.gymWorkoutCountToday > 0 ? " • \(health.gymMinutesToday)m workout" : " • No workout today"
+                healthMessage = "Health Data Updated\n\(health.stepsToday.formatted()) steps • \(health.walkingMinutesToday)m walking\(workout)"
+            } else {
+                healthMessage = "No Health Data Available. Check Apple Health permissions."
+            }
+        }
         guard store.isDayActive else { return }
         calendar.loadToday()
         await prayers.refresh()

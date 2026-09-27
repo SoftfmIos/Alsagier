@@ -296,15 +296,19 @@ final class AppStore: ObservableObject {
         save()
     }
 
-    // Re-open is intentionally state-only so the UI changes immediately.
-    // TodayView refreshes Calendar/prayers and then calls refreshToday.
-    func reopenDay() {
+    // Re-open means RESUME FROM NOW, not restore the old flexible timeline.
+    // Completed/skipped work remains historical, while unfinished flexible work is
+    // rebuilt from now + 10 minutes around the latest Calendar/prayer constraints.
+    func reopenDay(calendar: [ScheduleBlock], prayers: [ScheduleBlock]) {
         guard let i = todayIndex, Calendar.current.isDateInToday(dayPlans[i].date) else { return }
         var plan = dayPlans[i]
         plan.endedAt = nil
         plan.isFrozen = false
         dayPlans[i] = plan
-        save()
+
+        let resumeFrom = Date().addingTimeInterval(10 * 60)
+        rebalanceFuture(calendar: calendar, prayers: prayers,
+                        after: Date(), scheduleFrom: resumeFrom, reflowPastFlexible: true)
     }
 
     func refreshToday(calendar: [ScheduleBlock], prayers: [ScheduleBlock]) {
@@ -352,15 +356,24 @@ final class AppStore: ObservableObject {
     func updateSettings(_ newValue: AppSettings) { settings = newValue; save() }
 
     private func rebalanceFuture(calendar: [ScheduleBlock], prayers: [ScheduleBlock],
-                                 after moment: Date = Date(), scheduleFrom: Date? = nil) {
+                                 after moment: Date = Date(), scheduleFrom: Date? = nil,
+                                 reflowPastFlexible: Bool = false) {
         guard let di = todayIndex, dayPlans[di].endedAt == nil else { return }
         // Clean legacy/stored fixed duplicates before deciding what must be preserved.
         let existing = deduplicatedFixedBlocks(dayPlans[di].blocks)
         if existing.count != dayPlans[di].blocks.count { dayPlans[di].blocks = existing }
 
-        // Preserve anything already started/closed. If travel or its habit has started,
-        // preserve the whole travel+habit pair so a refresh/re-open can never add travel twice.
-        var preserved = existing.filter { $0.start < moment || $0.isCompleted || $0.isSkipped }
+        // Normal refresh preserves already-started blocks. Re-open is different:
+        // unfinished flexible blocks from the closed session must NOT stay in the past.
+        // Keep past fixed commitments (Calendar/prayer) as history and keep anything
+        // explicitly completed/skipped, then rebuild the remaining flexible work.
+        var preserved = existing.filter { block in
+            if block.isCompleted || block.isSkipped { return true }
+            if reflowPastFlexible {
+                return block.start < moment && (block.kind == .calendar || block.kind == .prayer)
+            }
+            return block.start < moment
+        }
         let activeHabitSources = Set(preserved.compactMap { block -> UUID? in
             guard block.kind == .travel || block.kind == .habit else { return nil }
             return block.sourceID
@@ -385,8 +398,24 @@ final class AppStore: ObservableObject {
             return block.sourceID
         })
 
+        // Minutes already kept in today's history/current session must count against
+        // each project's daily allocation. Without this, Re-open/Refresh could schedule
+        // a second full allocation after work had already been completed earlier today.
+        var consumedProjectMinutes: [UUID: Int] = [:]
+        for block in preserved where !block.isSkipped && (block.kind == .task || block.kind == .project) {
+            let minutes = max(0, Int(block.end.timeIntervalSince(block.start) / 60.0))
+            guard minutes > 0 else { continue }
+            if block.kind == .project, let projectID = block.sourceID {
+                consumedProjectMinutes[projectID, default: 0] += minutes
+            } else if block.kind == .task, let taskID = block.sourceID,
+                      let projectID = tasks.first(where: { $0.id == taskID })?.projectID {
+                consumedProjectMinutes[projectID, default: 0] += minutes
+            }
+        }
+
         let rebuildStart = scheduleFrom ?? moment
-        let rebuilt = buildSchedule(calendar: calendar, prayers: prayers, from: rebuildStart)
+        let rebuilt = buildSchedule(calendar: calendar, prayers: prayers, from: rebuildStart,
+                                    consumedProjectMinutes: consumedProjectMinutes)
             .filter { candidate in
                 if preserved.contains(where: {$0.id == candidate.id}) { return false }
                 // Calendar and prayer blocks are regenerated with fresh UUIDs. Compare
@@ -412,7 +441,8 @@ final class AppStore: ObservableObject {
         save()
     }
 
-    private func buildSchedule(calendar: [ScheduleBlock], prayers: [ScheduleBlock], from start: Date) -> [ScheduleBlock] {
+    private func buildSchedule(calendar: [ScheduleBlock], prayers: [ScheduleBlock], from start: Date,
+                               consumedProjectMinutes: [UUID: Int] = [:]) -> [ScheduleBlock] {
         let cal = Calendar.current
         let day = cal.startOfDay(for: start)
         guard let workEnd = cal.date(bySettingHour: settings.workEndHour, minute: 0, second: 0, of: day),
@@ -450,7 +480,9 @@ final class AppStore: ObservableObject {
 
         // Keep a project together where possible to reduce context switching.
         for project in active {
-            var used = 0
+            // Preserve the daily allocation across Start/Refresh/Re-open.
+            // Re-open only schedules the allocation that is still genuinely remaining.
+            var used = min(project.dailyMinutes, consumedProjectMinutes[project.id, default: 0])
             if project.mode == .taskBased {
                 let pending = tasks.filter {!$0.isCompleted && $0.projectID == project.id}.sorted {
                     $0.priority.rank == $1.priority.rank ? $0.createdAt < $1.createdAt : $0.priority.rank < $1.priority.rank
@@ -464,7 +496,7 @@ final class AppStore: ObservableObject {
                     cursor = e; used += minutes
                 }
             } else {
-                var remaining = project.dailyMinutes
+                var remaining = max(0, project.dailyMinutes - used)
                 while remaining > 0 {
                     let minutes = min(project.preferredBlockMinutes, remaining)
                     guard let s = slot(after: cursor, minutes: minutes, limit: workEnd, blocks: result) else { break }

@@ -24,3 +24,9 @@ BUILD 7 (5.1)
 
 IMPORTANT BEFORE BUILDING BUILD 7:
 Enable HealthKit for the main App ID com.softfm.alsagierapp in Apple Developer and regenerate/re-upload the main App Store provisioning profile. No change is required to the Live Activity App ID/profile for HealthKit.
+
+Build 16 scheduler correction:
+- Re-open My Day now means resume/reflow from current time + 10 minutes.
+- Completed/skipped blocks and past fixed Calendar/prayer blocks remain historical.
+- Unfinished flexible work from the closed session is removed from the past and rebuilt around current fixed constraints.
+- Existing project priority and daily-allocation rules are unchanged.

@@ -2,35 +2,107 @@ import SwiftUI
 
 struct HabitsView:View {
     @EnvironmentObject private var store:AppStore
+    @EnvironmentObject private var calendar:CalendarManager
+    @EnvironmentObject private var prayers:PrayerManager
+    @StateObject private var health = HealthManager.shared
+    @Environment(\.scenePhase) private var scenePhase
     @State private var editing:Habit?
+
     var body:some View {
         NavigationStack {
             List {
-                ForEach(store.habits) { h in
-                    Button{editing=h}label:{
-                        HStack {
-                            Image(systemName:h.tracksWalking ? "figure.walk" : "figure.run").foregroundStyle(.orange)
-                            VStack(alignment:.leading,spacing:3) {
-                                Text(h.name)
-                                Text(detail(h)).font(.caption).foregroundStyle(.secondary)
-                                let progress=store.weeklyHabitProgress(h)
-                                HStack(spacing:4) {
-                                    ForEach(0..<progress.target,id:\.self) { i in
-                                        Image(systemName: i < progress.completed ? "circle.fill" : "circle")
-                                            .font(.system(size:8)).foregroundStyle(i < progress.completed ? .orange : .secondary)
-                                    }
-                                    Text("\(progress.completed)/\(progress.target) this week").font(.caption2).foregroundStyle(.secondary)
-                                }
+                if store.habits.contains(where: { $0.tracksWalking || isGym($0) }) {
+                    Section {
+                        HStack(spacing:12) {
+                            Image(systemName:"heart.text.square.fill").foregroundStyle(.red)
+                            VStack(alignment:.leading,spacing:2) {
+                                Text("Apple Health").font(.subheadline.weight(.semibold))
+                                Text(health.authorized ? "Today's activity is synced from Health" : "Health access is needed to show today's activity")
+                                    .font(.caption).foregroundStyle(.secondary)
                             }
-                            Spacer(); if !h.isEnabled {Image(systemName:"pause.circle")}
+                            Spacer()
+                            Button("Refresh") { Task { await refreshHealth() } }.font(.caption)
                         }
-                    }.buttonStyle(.plain)
-                    .swipeActions { Button("Delete",role:.destructive){store.deleteHabit(h)}; Button(h.isEnabled ? "Pause":"Enable"){store.toggleHabit(h)}.tint(.orange) }
+                    }
                 }
-            }.navigationTitle("Habits").toolbar{Button{editing=Habit(name:"")}label:{Image(systemName:"plus")}}
+
+                Section {
+                    ForEach(store.habits) { h in
+                        Button{editing=h}label:{
+                            HStack(alignment:.top) {
+                                Image(systemName:h.tracksWalking ? "figure.walk" : "figure.run").foregroundStyle(.orange).padding(.top,3)
+                                VStack(alignment:.leading,spacing:5) {
+                                    Text(h.name)
+                                    Text(detail(h)).font(.caption).foregroundStyle(.secondary)
+
+                                    if h.tracksWalking {
+                                        walkingHealthRow(h)
+                                    } else if isGym(h) {
+                                        gymHealthRow()
+                                    }
+
+                                    let progress=store.weeklyHabitProgress(h)
+                                    HStack(spacing:4) {
+                                        ForEach(0..<progress.target,id:\.self) { i in
+                                            Image(systemName: i < progress.completed ? "circle.fill" : "circle")
+                                                .font(.system(size:8)).foregroundStyle(i < progress.completed ? .orange : .secondary)
+                                        }
+                                        Text("\(progress.completed)/\(progress.target) this week").font(.caption2).foregroundStyle(.secondary)
+                                    }
+                                }
+                                Spacer(); if !h.isEnabled {Image(systemName:"pause.circle")}
+                            }
+                        }.buttonStyle(.plain)
+                        .swipeActions { Button("Delete",role:.destructive){store.deleteHabit(h)}; Button(h.isEnabled ? "Pause":"Enable"){store.toggleHabit(h)}.tint(.orange) }
+                    }
+                }
+            }
+            .navigationTitle("Habits")
+            .toolbar{Button{editing=Habit(name:"")}label:{Image(systemName:"plus")}}
             .sheet(item:$editing){HabitEditor(habit:$0)}
+            .task { await health.requestAccess(); await refreshHealth() }
+            .onChange(of:scenePhase) { _, phase in if phase == .active { Task { await refreshHealth() } } }
+            .refreshable { await refreshHealth() }
         }
     }
+
+    @ViewBuilder private func walkingHealthRow(_ h:Habit) -> some View {
+        let stepProgress = h.stepTarget > 0 ? min(1.0, Double(health.stepsToday)/Double(h.stepTarget)) : 0
+        let minuteProgress = h.walkingMinutesTarget > 0 ? min(1.0, Double(health.walkingMinutesToday)/Double(h.walkingMinutesTarget)) : 0
+        let progress = max(stepProgress, minuteProgress)
+        VStack(alignment:.leading,spacing:4) {
+            Text("\(health.stepsToday.formatted()) / \(h.stepTarget.formatted()) steps  •  \(health.walkingMinutesToday) / \(h.walkingMinutesTarget)m")
+                .font(.caption2).foregroundStyle(.secondary)
+            ProgressView(value:progress)
+                .tint(progress >= 1 ? .green : .orange)
+            if progress >= 1 { Text("Today's walking target reached").font(.caption2).foregroundStyle(.green) }
+        }
+    }
+
+    @ViewBuilder private func gymHealthRow() -> some View {
+        if health.gymWorkoutCountToday > 0 {
+            Text("Apple Health today: \(health.gymMinutesToday)m gym • \(health.gymWorkoutCountToday) workout\(health.gymWorkoutCountToday == 1 ? "" : "s")")
+                .font(.caption2).foregroundStyle(.secondary)
+        } else {
+            Text("Apple Health today: no gym workout recorded yet")
+                .font(.caption2).foregroundStyle(.secondary)
+        }
+    }
+
+    private func refreshHealth() async {
+        await health.refreshToday()
+        guard store.isDayActive else { return }
+        calendar.loadToday()
+        await prayers.refresh()
+        store.applyWalkingHealth(steps:health.stepsToday, walkingMinutes:health.walkingMinutesToday,
+                                 calendar:calendar.todayBlocks, prayers:prayers.blocks)
+    }
+
+    private func isGym(_ h:Habit)->Bool {
+        let n=h.name.lowercased()
+        return n.contains("gym") || n.contains("workout") || n.contains("fitness")
+    }
+
     private func detail(_ h:Habit)->String {
         if h.tracksWalking { return "\(h.stepTarget.formatted()) steps OR \(h.walkingMinutesTarget)m walking • \(h.timesPerWeek)x/week" }
         return h.mode == .fixed ? "\(h.duration)m • fixed days" : "\(h.duration)m • \(h.timesPerWeek)x/week • Random"

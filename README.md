@@ -32,3 +32,11 @@ iOS does not guarantee arbitrary background execution exactly at the work cutoff
 
 Build validation:
 This environment cannot run Apple's Xcode compiler. Static source/configuration checks were run here; Codemagic/Xcode is the authoritative compile/archive validation.
+
+## Build 16 clean consolidation
+- Re-open resumes from current time + 10 minutes and reflows unfinished flexible work.
+- Preserved work minutes count against each project's daily allocation; Re-open does not grant a second full allocation.
+- Live Activity uses current/next focus presentation, countdown when active, upcoming items, habit progress subtitles, prayer green and travel neutral.
+- Fixed upcoming Live Activity end time (no zero-duration prayer display).
+- Build labels corrected to 16.
+- Dad Jokes appear on Start and Re-open, with 500 non-repeating offline jokes.

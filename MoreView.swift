@@ -31,7 +31,7 @@ struct MoreView:View {
                 }
                 Section("Start My Day") {
                     Toggle("Dad Jokes", isOn:$draft.dadJokesEnabled)
-                    Text("One offline joke per day. No repeats until all 500 have been shown.").font(.caption).foregroundStyle(.secondary)
+                    Text("One offline joke each time you start or re-open a day. No repeats until all 500 have been shown.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Permissions") {
                     Label(calendar.authorized ? "Calendar connected":"Calendar permission needed",systemImage:"calendar")
@@ -44,7 +44,7 @@ struct MoreView:View {
                     Button { importing=true } label: {
                         Label("Restore CapJour Backup",systemImage:"square.and.arrow.down")
                     }
-                    Text("Backup includes CapJour projects, tasks, habits, schedules and settings. It does not copy your iPhone Calendar or Apple Health data.")
+                    Text("Backup includes CapJour projects, tasks, habits, habit completion history, schedules, Insights and settings. It does not copy your iPhone Calendar or Apple Health data.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Data") {
@@ -59,7 +59,7 @@ struct MoreView:View {
                 }
                 Section("About") {
                     NavigationLink("About CapJour") { CapJourAboutView() }
-                    Text("Version 5.1 • Build 15").foregroundStyle(.secondary)
+                    Text("Version 5.1 • Build 16").foregroundStyle(.secondary)
                 }
             }.navigationTitle("More")
             .onAppear{draft=store.settings}
@@ -144,7 +144,7 @@ private struct CapJourAboutView: View {
 
                 Divider()
                 Text("CapJour by Softfm").font(.headline)
-                Text("Version 5.1 • Build 15").foregroundStyle(.secondary)
+                Text("Version 5.1 • Build 16").foregroundStyle(.secondary)
             }
             .padding()
         }

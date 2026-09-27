@@ -126,9 +126,7 @@ struct TodayView: View {
                 }.buttonStyle(.borderedProminent)
             } else {
                 Button {
-                    store.reopenDay() // immediate state/UI change
-                    dadJoke = store.nextDadJoke()
-                    Task { await refreshMyDay() }
+                    Task { await reopenMyDay() }
                 } label: {
                     Label("Re-open My Day",systemImage:"arrow.counterclockwise").frame(maxWidth:.infinity)
                 }.buttonStyle(.borderedProminent)
@@ -214,6 +212,16 @@ struct TodayView: View {
         dadJoke = store.nextDadJoke()
         await refreshAfterScheduleChange()
         starting=false
+    }
+
+    private func reopenMyDay() async {
+        refreshing = true
+        calendar.loadToday()
+        await prayers.refresh()
+        store.reopenDay(calendar: calendar.todayBlocks, prayers: prayers.blocks)
+        dadJoke = store.nextDadJoke()
+        await refreshAfterScheduleChange()
+        refreshing = false
     }
 
     private func refreshMyDay() async {

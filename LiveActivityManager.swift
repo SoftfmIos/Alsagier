@@ -34,7 +34,9 @@ final class LiveActivityManager {
             title: primary.title,
             subtitle: primary.subtitle ?? "",
             start: primary.start,
-            end: current == nil ? primary.start : primary.end,
+            // Always preserve the real end time. Older builds collapsed an upcoming
+            // block to start == end, which produced prayer rows such as 5:34–5:34.
+            end: primary.end,
             isUpcoming: current == nil,
             remaining: visible,
             remainingCount: upcoming.count,

@@ -5,9 +5,12 @@ import HealthKit
 final class HealthManager: ObservableObject {
     static let shared = HealthManager()
     private let store = HKHealthStore()
+
     @Published var authorized = false
     @Published var stepsToday: Int = 0
     @Published var walkingMinutesToday: Int = 0
+    @Published var gymMinutesToday: Int = 0
+    @Published var gymWorkoutCountToday: Int = 0
 
     func requestAccess() async {
         guard HKHealthStore.isHealthDataAvailable(),
@@ -17,7 +20,9 @@ final class HealthManager: ObservableObject {
             try await store.requestAuthorization(toShare: [], read: [steps, workout])
             authorized = true
             await refreshToday()
-        } catch { authorized = false }
+        } catch {
+            authorized = false
+        }
     }
 
     func refreshToday() async {
@@ -34,16 +39,26 @@ final class HealthManager: ObservableObject {
             }
         }
 
-        // Walking minutes are the duration of walking workouts recorded in Apple Health.
-        // Steps still work automatically from iPhone/Apple Watch even when no workout is started.
-        walkingMinutesToday = await withCheckedContinuation { continuation in
-            let walking = HKQuery.predicateForWorkouts(with: .walking)
-            let combined = NSCompoundPredicate(andPredicateWithSubpredicates: [predicate, walking])
-            let q = HKSampleQuery(sampleType: .workoutType(), predicate: combined, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
-                let seconds = (samples as? [HKWorkout] ?? []).reduce(0) { $0 + $1.duration }
-                continuation.resume(returning: Int(seconds / 60))
+        let workouts: [HKWorkout] = await withCheckedContinuation { continuation in
+            let q = HKSampleQuery(sampleType: .workoutType(), predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
+                continuation.resume(returning: samples as? [HKWorkout] ?? [])
             }
             store.execute(q)
         }
+
+        let walking = workouts.filter { $0.workoutActivityType == .walking }
+        walkingMinutesToday = Int(walking.reduce(0) { $0 + $1.duration } / 60)
+
+        // Gym is informational only. CapJour does NOT silently mark the Gym habit Done
+        // from Health data; the user still decides Done/Skip. These common workout types
+        // are shown so Apple Watch/iPhone-recorded gym activity is visible in Habits.
+        let gymTypes: Set<HKWorkoutActivityType> = [
+            .traditionalStrengthTraining, .functionalStrengthTraining,
+            .crossTraining, .highIntensityIntervalTraining, .coreTraining,
+            .mixedCardio
+        ]
+        let gym = workouts.filter { gymTypes.contains($0.workoutActivityType) }
+        gymMinutesToday = Int(gym.reduce(0) { $0 + $1.duration } / 60)
+        gymWorkoutCountToday = gym.count
     }
 }

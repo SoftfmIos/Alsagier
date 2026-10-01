@@ -59,7 +59,7 @@ struct MoreView:View {
                 }
                 Section("About") {
                     NavigationLink("About CapJour") { CapJourAboutView() }
-                    Text("Version 5.1 • Build 17").foregroundStyle(.secondary)
+                    Text("Version 5.1 • Build 18").foregroundStyle(.secondary)
                 }
             }.navigationTitle("More")
             .onAppear{draft=store.settings}
@@ -144,7 +144,7 @@ private struct CapJourAboutView: View {
 
                 Divider()
                 Text("CapJour by Softfm").font(.headline)
-                Text("Version 5.1 • Build 17").foregroundStyle(.secondary)
+                Text("Version 5.1 • Build 18").foregroundStyle(.secondary)
             }
             .padding()
         }
@@ -156,132 +156,188 @@ private struct CapJourAboutView: View {
 private struct InsightsView: View {
     @EnvironmentObject private var store: AppStore
     @State private var range = 7
-    private var cutoff: Date? { range == 0 ? nil : Calendar.current.date(byAdding:.day,value:-range,to:Date()) }
+
+    private var cutoff: Date? { range == 0 ? nil : Calendar.current.date(byAdding: .day, value: -range, to: Date()) }
     private var rows: [WorkInsight] { store.insights.filter { cutoff == nil || $0.date >= cutoff! } }
     private var rated: [WorkInsight] { rows.filter { $0.happiness != nil } }
     private var totalMinutes: Int { rows.reduce(0) { $0 + $1.actualMinutes } }
-    private var avgEmotion: Double? { rated.isEmpty ? nil : Double(rated.compactMap(\.happiness).reduce(0,+))/Double(rated.count) }
+    private var avgEmotion: Double? { rated.isEmpty ? nil : Double(rated.compactMap(\.happiness).reduce(0,+)) / Double(rated.count) }
     private var accuracy: Double {
         guard !rows.isEmpty else { return 0 }
-        let planned=max(1,rows.reduce(0){$0+$1.plannedMinutes})
-        let error=rows.reduce(0){$0+abs($1.actualMinutes-$1.plannedMinutes)}
-        return max(0,min(1,1-Double(error)/Double(planned)))
+        let planned = max(1, rows.reduce(0) { $0 + $1.plannedMinutes })
+        let error = rows.reduce(0) { $0 + abs($1.actualMinutes - $1.plannedMinutes) }
+        return max(0, min(1, 1 - Double(error) / Double(planned)))
     }
-    private var relevantBlocks:[ScheduleBlock] {
+    private var relevantBlocks: [ScheduleBlock] {
         store.dayPlans.filter { cutoff == nil || $0.date >= cutoff! }.flatMap(\.blocks)
             .filter { $0.kind == .task || $0.kind == .project }
     }
     private var completion: Double {
         guard !relevantBlocks.isEmpty else { return 0 }
-        return Double(relevantBlocks.filter(\.isCompleted).count)/Double(relevantBlocks.count)
+        return Double(relevantBlocks.filter(\.isCompleted).count) / Double(relevantBlocks.count)
     }
-    private var grouped: [(String,Int,Int,Double?)] {
-        Dictionary(grouping: rows, by: \.projectName).map { name, items in
-            let rs=items.compactMap(\.happiness)
-            return (name,items.reduce(0){$0+$1.actualMinutes},items.count,rs.isEmpty ? nil : Double(rs.reduce(0,+))/Double(rs.count))
-        }.sorted{$0.1>$1.1}
+    private var completedCount: Int { relevantBlocks.filter(\.isCompleted).count }
+    private var skippedCount: Int { relevantBlocks.filter(\.isSkipped).count }
+
+    private var grouped: [(String, Int, Color)] {
+        let projectColors = Dictionary(uniqueKeysWithValues: store.projects.map { ($0.name, $0.color.color) })
+        return Dictionary(grouping: rows, by: \.projectName).map { name, items in
+            (name, items.reduce(0) { $0 + $1.actualMinutes }, projectColors[name] ?? .blue)
+        }.sorted { $0.1 > $1.1 }
     }
-    private var hourly:[(Int,Double,Int)] {
-        // Weight each rating by the actual minutes worked inside each clock hour.
-        // A 9:45–11:15 session contributes 15m to 9, 60m to 10 and 15m to 11.
-        var weighted: [Int:(scoreMinutes:Double, minutes:Int, sessions:Set<UUID>)] = [:]
+
+    private var week: [(String, Int, Double?)] {
         let cal = Calendar.current
-        for item in rated {
-            guard let happiness = item.happiness else { continue }
-            let start = item.startedAt ?? item.date
-            let duration = max(1, item.actualMinutes)
-            let end = start.addingTimeInterval(Double(duration * 60))
-            var cursor = start
-            while cursor < end {
-                guard let hourInterval = cal.dateInterval(of: .hour, for: cursor) else { break }
-                let segmentEnd = min(end, hourInterval.end)
-                let minutes = max(1, Int(segmentEnd.timeIntervalSince(cursor) / 60.0))
-                let hour = cal.component(.hour, from: cursor)
-                var bucket = weighted[hour] ?? (0, 0, Set<UUID>())
-                bucket.scoreMinutes += Double(happiness * minutes)
-                bucket.minutes += minutes
-                bucket.sessions.insert(item.id)
-                weighted[hour] = bucket
-                cursor = segmentEnd
-            }
+        let formatter = DateFormatter(); formatter.dateFormat = "EEE"
+        return (0..<7).reversed().compactMap { offset in
+            guard let day = cal.date(byAdding: .day, value: -offset, to: Date()) else { return nil }
+            let dayRows = rows.filter { cal.isDate($0.date, inSameDayAs: day) }
+            let minutes = dayRows.reduce(0) { $0 + $1.actualMinutes }
+            let scores = dayRows.compactMap(\.happiness)
+            let emotion = scores.isEmpty ? nil : Double(scores.reduce(0,+)) / Double(scores.count)
+            return (formatter.string(from: day), minutes, emotion)
         }
-        return weighted.map { hour, bucket in
-            (hour, bucket.minutes > 0 ? bucket.scoreMinutes / Double(bucket.minutes) : 0, bucket.sessions.count)
-        }.sorted { $0.0 < $1.0 }
     }
-    private var qualifiedHourly:[(Int,Double,Int)] { hourly.filter { $0.2 >= 3 } }
-    private var bestHour:(Int,Double,Int)? { qualifiedHourly.max { $0.1 < $1.1 } }
-    private var lowHour:(Int,Double,Int)? { qualifiedHourly.min { $0.1 < $1.1 } }
 
     var body: some View {
         ScrollView {
-            VStack(spacing:18) {
-                Picker("Range",selection:$range){ Text("7 Days").tag(7); Text("30 Days").tag(30); Text("All Time").tag(0) }.pickerStyle(.segmented)
+            VStack(spacing: 14) {
+                Picker("Range", selection: $range) {
+                    Text("7 Days").tag(7); Text("30 Days").tag(30); Text("All Time").tag(0)
+                }
+                .pickerStyle(.segmented)
 
-                VStack(spacing:14) {
-                    ConcentricGauge(completion:completion,accuracy:accuracy,emotion:(avgEmotion ?? 0)/5)
-                        .frame(height:220)
-                    HStack {
-                        gaugeNumber("Completion", String(format:"%.0f%%",completion*100), color:.green)
-                        Spacer(); gaugeNumber("Time Accuracy",String(format:"%.0f%%",accuracy*100), color:.blue)
-                        Spacer(); gaugeNumber("Emotion",avgEmotion.map{String(format:"%.1f/5",$0)} ?? "—", color:.orange)
-                    }
-                    Divider()
-                    HStack { metric("Actual Work",format(totalMinutes)); Spacer(); metric("Completed", "\(rows.count)"); Spacer(); metric("Rated","\(rated.count)") }
-                }.padding().background(.thinMaterial,in:RoundedRectangle(cornerRadius:18))
+                HStack(spacing: 6) {
+                    topMetric(String(format: "%.0f%%", completion * 100), "Completion", .green)
+                    topMetric(String(format: "%.0f%%", accuracy * 100), "Time Accuracy", .blue)
+                    topMetric(avgEmotion.map { String(format: "%.1f / 5", $0) } ?? "—", "Emotion", .orange)
+                }
+                .padding(.vertical, 4)
 
-                VStack(alignment:.leading,spacing:12) {
-                    Text("When Do I Feel Best?").font(.title3.bold())
-                    if hourly.isEmpty { Text("Rate completed work to reveal your time-of-day pattern.").foregroundStyle(.secondary) }
-                    else {
-                        if qualifiedHourly.isEmpty {
-                            Text("Best and Lowest appear after at least 3 rated sessions overlap the same hour.")
-                                .font(.caption).foregroundStyle(.secondary)
-                        } else {
-                            HStack(spacing:12) {
-                                timeCard("Best",bestHour,system:"sun.max.fill")
-                                timeCard("Lowest",lowHour,system:"moon.fill")
-                            }
-                        }
-                        ForEach(hourly,id:\.0) { h,a,n in
-                            HStack { Text(hourLabel(h)).frame(width:72,alignment:.leading); ProgressView(value:a,total:5); Text(String(format:"%.1f",a)).monospacedDigit(); Text("(\(n))").font(.caption).foregroundStyle(.secondary) }
-                        }
-                        Text("Ratings are weighted by actual minutes worked in each hour. Numbers in parentheses are rated sessions overlapping that hour. Patterns describe association, not cause.").font(.caption).foregroundStyle(.secondary)
-                    }
-                }.sectionCard()
+                NavigationLink { FocusEmotionDetailView(rows: rows) } label: {
+                    dashboardCard(title: "Focus & Emotion") { FocusEmotionChart(days: week) }
+                }.buttonStyle(.plain)
 
-                VStack(alignment:.leading,spacing:12) {
-                    Text("Projects").font(.title3.bold())
-                    if grouped.isEmpty { Text("Complete work to start building project insights.").foregroundStyle(.secondary) }
-                    ForEach(Array(grouped.prefix(5)),id:\.0) { g in
-                        VStack(alignment:.leading,spacing:5) {
-                            HStack { Text(g.0).font(.headline); Spacer(); Text(format(g.1)).bold() }
-                            Text("\(g.2) completed • Emotion \(g.3.map{String(format:"%.1f/5",$0)} ?? "—")").font(.caption).foregroundStyle(.secondary)
-                        }
-                        if g.0 != grouped.last?.0 { Divider() }
+                NavigationLink { ProjectTimeDetailView(rows: rows) } label: {
+                    dashboardCard(title: "Time Breakdown") {
+                        TimeBreakdownChart(items: Array(grouped.prefix(6)), totalMinutes: totalMinutes)
                     }
-                }.sectionCard()
+                }.buttonStyle(.plain)
 
-                VStack(alignment:.leading,spacing:12) {
-                    Text("History").font(.title3.bold())
-                    Text("Past data is organized by day so Insights stays fast and useful as your history grows.")
-                        .font(.caption).foregroundStyle(.secondary)
-                    NavigationLink { HistoryDaysView() } label: {
-                        Label("Browse Past Days", systemImage:"calendar")
-                            .font(.headline).frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,6)
+                NavigationLink { HistoryDaysView() } label: {
+                    dashboardCard(title: "Task Completion") {
+                        HStack {
+                            countMetric("\(completedCount)", "Completed")
+                            Spacer()
+                            countMetric("\(skippedCount)", "Skipped")
+                            Spacer()
+                            countMetric(String(format: "%.0f%%", accuracy * 100), "On Time")
+                        }.padding(.horizontal, 10).padding(.bottom, 4)
                     }
-                }.sectionCard()
-            }.padding()
-        }.navigationTitle("Insights").background(Color(.systemGroupedBackground))
+                }.buttonStyle(.plain)
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 24)
+        }
+        .navigationTitle("Insights")
+        .navigationBarTitleDisplayMode(.large)
+        .background(Color(.systemGroupedBackground))
     }
-    @ViewBuilder private func timeCard(_ title:String,_ value:(Int,Double,Int)?,system:String)->some View {
-        VStack(alignment:.leading,spacing:5) { Label(title,systemImage:system).font(.caption.bold()); if let v=value { Text(hourLabel(v.0)).font(.headline); Text(String(format:"%.1f/5 • %d ratings",v.1,v.2)).font(.caption).foregroundStyle(.secondary) } else { Text("—") } }.frame(maxWidth:.infinity,alignment:.leading).padding(12).background(Color(.secondarySystemGroupedBackground),in:RoundedRectangle(cornerRadius:12))
+
+    private func topMetric(_ value: String, _ title: String, _ color: Color) -> some View {
+        VStack(spacing: 3) {
+            Text(value).font(.title2.bold()).foregroundStyle(color).minimumScaleFactor(0.75).lineLimit(1)
+            Text(title).font(.caption).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.75)
+        }.frame(maxWidth: .infinity)
     }
-    private func gaugeNumber(_ title:String,_ value:String,color:Color)->some View { VStack(spacing:3){Text(value).font(.headline).monospacedDigit().foregroundStyle(color);Text(title).font(.caption2).foregroundStyle(.secondary)} }
-    private func metric(_ title:String,_ value:String)->some View { VStack(alignment:.leading){Text(value).font(.headline);Text(title).font(.caption).foregroundStyle(.secondary)} }
-    private func emotion(_ v:Int?)->String { guard let v else{return "—"}; return ["","😞","🙁","😐","🙂","😄"][max(1,min(5,v))] + " \(v)/5" }
-    private func hourLabel(_ h:Int)->String { let d=Calendar.current.date(bySettingHour:h,minute:0,second:0,of:Date())!; return d.formatted(date:.omitted,time:.shortened) }
-    private func format(_ m:Int)->String { m < 60 ? "\(m) min" : String(format:"%dh %02dm",m/60,m%60) }
+
+    private func countMetric(_ value: String, _ title: String) -> some View {
+        VStack(spacing: 3) {
+            Text(value).font(.title2.bold()).foregroundStyle(.primary)
+            Text(title).font(.caption).foregroundStyle(.secondary)
+        }.frame(maxWidth: .infinity)
+    }
+
+    private func dashboardCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack { Text(title).font(.title3.bold()); Spacer(); Image(systemName: "chevron.right").foregroundStyle(.secondary) }
+            content()
+        }
+        .padding(14)
+        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+}
+
+private struct FocusEmotionChart: View {
+    let days: [(String, Int, Double?)]
+    private var maxMinutes: Int { max(60, days.map(\.1).max() ?? 60) }
+    var body: some View {
+        VStack(spacing: 8) {
+            GeometryReader { geo in
+                let w = geo.size.width / CGFloat(max(1, days.count))
+                ZStack(alignment: .bottomLeading) {
+                    HStack(alignment: .bottom, spacing: 0) {
+                        ForEach(Array(days.enumerated()), id: \.offset) { _, d in
+                            VStack { Spacer(); RoundedRectangle(cornerRadius: 4).fill(Color.blue.opacity(0.38)).frame(width: min(26, w * 0.55), height: max(2, geo.size.height * CGFloat(d.1) / CGFloat(maxMinutes))) }
+                                .frame(width: w)
+                        }
+                    }
+                    Path { p in
+                        var started = false
+                        for (i,d) in days.enumerated() {
+                            guard let e = d.2 else { continue }
+                            let x = w * (CGFloat(i) + 0.5)
+                            let y = geo.size.height * (1 - CGFloat(max(1,min(5,e)) - 1) / 4)
+                            if !started { p.move(to: CGPoint(x:x,y:y)); started = true } else { p.addLine(to: CGPoint(x:x,y:y)) }
+                        }
+                    }.stroke(Color.orange, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                    ForEach(Array(days.enumerated()), id: \.offset) { i,d in
+                        if let e=d.2 {
+                            Circle().fill(Color(.systemBackground)).stroke(Color.orange,lineWidth:2).frame(width:9,height:9)
+                                .position(x:w*(CGFloat(i)+0.5), y:geo.size.height*(1-CGFloat(max(1,min(5,e))-1)/4))
+                        }
+                    }
+                }
+            }.frame(height: 118)
+            HStack(spacing: 0) { ForEach(Array(days.enumerated()),id:\.offset) { _,d in Text(d.0).font(.caption2).foregroundStyle(.secondary).frame(maxWidth:.infinity) } }
+            HStack(spacing:18) { Label("Focus Time",systemImage:"circle.fill").foregroundStyle(.blue); Label("Emotion Rating",systemImage:"circle.fill").foregroundStyle(.orange) }.font(.caption)
+        }
+    }
+}
+
+private struct TimeBreakdownChart: View {
+    let items: [(String, Int, Color)]
+    let totalMinutes: Int
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle().stroke(Color.secondary.opacity(0.12), lineWidth: 18)
+                ForEach(Array(items.enumerated()), id: \.offset) { i,item in
+                    let before = items.prefix(i).reduce(0) { $0 + $1.1 }
+                    let denom = max(1,totalMinutes)
+                    Circle().trim(from: CGFloat(before)/CGFloat(denom), to: CGFloat(before+item.1)/CGFloat(denom))
+                        .stroke(item.2, style: StrokeStyle(lineWidth:18,lineCap:.butt)).rotationEffect(.degrees(-90))
+                }
+                VStack(spacing:0) { Text(formatMinutes(totalMinutes)).font(.headline.bold()); Text("Total Focus").font(.caption2).foregroundStyle(.secondary) }
+            }.frame(width: 126, height: 126)
+            VStack(alignment:.leading,spacing:7) {
+                if items.isEmpty { Text("Project time will appear after completed work.").font(.caption).foregroundStyle(.secondary) }
+                ForEach(Array(items.prefix(6).enumerated()), id:\.offset) { _,item in
+                    HStack(spacing:7) { Circle().fill(item.2).frame(width:9,height:9); Text(item.0).font(.caption).lineLimit(1); Spacer(); Text(formatMinutes(item.1)).font(.caption).foregroundStyle(.secondary) }
+                }
+            }
+        }
+    }
+    private func formatMinutes(_ m:Int)->String { m < 60 ? "\(m)m" : (m % 60 == 0 ? "\(m/60)h" : "\(m/60)h \(m%60)m") }
+}
+
+private struct FocusEmotionDetailView: View {
+    let rows:[WorkInsight]
+    var body: some View { List(rows.sorted{$0.date>$1.date}) { r in VStack(alignment:.leading){Text(r.taskName ?? r.projectName).font(.headline);Text("\(r.actualMinutes) min" + (r.happiness.map{" • \($0)/5"} ?? "")).font(.caption).foregroundStyle(.secondary)} }.navigationTitle("Focus & Emotion") }
+}
+private struct ProjectTimeDetailView: View {
+    let rows:[WorkInsight]
+    var body: some View { List { ForEach(Dictionary(grouping:rows,by:\.projectName).map{($0.key,$0.value.reduce(0){$0+$1.actualMinutes})}.sorted{$0.1>$1.1},id:\.0){ item in HStack{Text(item.0);Spacer();Text("\(item.1) min").foregroundStyle(.secondary)} } }.navigationTitle("Time Breakdown") }
 }
 
 

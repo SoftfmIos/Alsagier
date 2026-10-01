@@ -476,21 +476,56 @@ private struct SwitchWorkView: View {
 struct HistoryView: View {
     @EnvironmentObject private var store:AppStore
     @Environment(\.dismiss) private var dismiss
+    private var days:[DayPlan] {
+        store.dayPlans.filter{!Calendar.current.isDateInToday($0.date)}.sorted{$0.date>$1.date}
+    }
     var body:some View {
         NavigationStack {
-            List(store.dayPlans.filter{!Calendar.current.isDateInToday($0.date)}.sorted{$0.date>$1.date}) { day in
-                Section(day.date.formatted(date:.complete,time:.omitted)) {
-                    ForEach(day.blocks) { b in
-                        VStack(alignment:.leading,spacing:3) {
-                            Text(b.title).font(.headline).foregroundStyle(b.projectColor?.color ?? .primary)
-                            if let s=b.subtitle { Text(s) }
-                            Text("\(b.start.formatted(date:.omitted,time:.shortened)) – \(b.end.formatted(date:.omitted,time:.shortened))")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
+            List(days) { day in
+                NavigationLink { TodayHistoryDayDetail(plan:day) } label: {
+                    VStack(alignment:.leading,spacing:5) {
+                        Text(day.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().year()))
+                            .font(.headline)
+                        let flexible=day.blocks.filter{[BlockKind.task,.project,.habit].contains($0.kind)}
+                        let done=flexible.filter(\.isCompleted).count
+                        let skipped=flexible.filter(\.isSkipped).count
+                        let minutes=flexible.filter(\.isCompleted).reduce(0){$0+$1.durationMinutes}
+                        Text("\(done) completed • \(skipped) skipped • \(historyDuration(minutes))")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }.padding(.vertical,4)
                 }
-            }.navigationTitle("Past Days").toolbar { Button("Done") { dismiss() } }
+            }
+            .navigationTitle("Past Days")
+            .toolbar { ToolbarItem(placement:.confirmationAction){Button("Done"){dismiss()}} }
         }
+    }
+    private func historyDuration(_ m:Int)->String { m < 60 ? "\(m)m" : String(format:"%dh %02dm",m/60,m%60) }
+}
+
+private struct TodayHistoryDayDetail: View {
+    let plan:DayPlan
+    var body:some View {
+        List {
+            Section("Day Summary") {
+                let flexible=plan.blocks.filter{[BlockKind.task,.project,.habit].contains($0.kind)}
+                LabeledContent("Completed",value:"\(flexible.filter(\.isCompleted).count)")
+                LabeledContent("Skipped",value:"\(flexible.filter(\.isSkipped).count)")
+                LabeledContent("Timeline blocks",value:"\(plan.blocks.count)")
+            }
+            Section("Final Timeline") {
+                ForEach(plan.blocks.sorted{$0.start<$1.start}) { b in
+                    HStack(alignment:.top,spacing:10) {
+                        Image(systemName:b.kind.icon).foregroundStyle(b.color).frame(width:22)
+                        VStack(alignment:.leading,spacing:3) {
+                            HStack { Text(b.title).font(.headline); Spacer(); if b.isCompleted { Image(systemName:"checkmark.circle.fill").foregroundStyle(.green) } else if b.isSkipped { Image(systemName:"forward.circle.fill").foregroundStyle(.orange) } }
+                            if let sub=b.subtitle,!sub.isEmpty { Text(sub).font(.caption).foregroundStyle(.secondary) }
+                            Text("\(b.start.formatted(date:.omitted,time:.shortened)) – \(b.end.formatted(date:.omitted,time:.shortened))")
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
+                    }.padding(.vertical,2)
+                }
+            }
+        }.navigationTitle(plan.date.formatted(date:.abbreviated,time:.omitted))
     }
 }
 

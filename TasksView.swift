@@ -19,18 +19,47 @@ struct TasksView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing:0) {
-                ScrollView(.horizontal, showsIndicators:false) {
-                    HStack(spacing:8) {
-                        chip("All", .all); chip("Active", .active); chip("Closed", .closed)
-                        Menu {
-                            ForEach(store.projects) { p in Button(p.name) { filter = .project(p.id) } }
-                        } label: {
-                            Label(projectFilterTitle, systemImage:"folder").padding(.horizontal,12).padding(.vertical,7)
-                                .background(isProjectFilter ? Color.accentColor.opacity(0.16) : Color(.secondarySystemBackground), in:Capsule())
+            VStack(spacing: 0) {
+                VStack(spacing: 10) {
+                    Picker("Task status", selection: Binding(
+                        get: { statusSelection },
+                        set: { filter = $0 }
+                    )) {
+                        Text("All").tag(TaskFilter.all)
+                        Text("Active").tag(TaskFilter.active)
+                        Text("Closed").tag(TaskFilter.closed)
+                    }
+                    .pickerStyle(.segmented)
+
+                    Menu {
+                        Button { filter = .all } label: { Label("All Projects", systemImage:"tray.full") }
+                        Divider()
+                        ForEach(store.projects) { p in
+                            Button { filter = .project(p.id) } label: {
+                                Label(p.name, systemImage:"folder")
+                            }
                         }
-                    }.padding(.horizontal).padding(.vertical,8)
+                    } label: {
+                        HStack(spacing:8) {
+                            Image(systemName:"folder")
+                            Text(isProjectFilter ? projectFilterTitle : "Filter by Project")
+                                .lineLimit(1)
+                            Spacer()
+                            Image(systemName:"chevron.up.chevron.down").font(.caption)
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isProjectFilter ? Color.accentColor : Color.primary)
+                        .padding(.horizontal,12).frame(height:40)
+                        .background(Color(.secondarySystemBackground), in:RoundedRectangle(cornerRadius:12))
+                    }
+                    if isProjectFilter {
+                        Button { filter = .all } label: {
+                            Label("Clear project filter", systemImage:"xmark.circle.fill").font(.caption.weight(.semibold))
+                        }.buttonStyle(.plain).foregroundStyle(.secondary)
+                    }
                 }
+                .padding(.horizontal).padding(.top,8).padding(.bottom,6)
+
                 List {
                     ForEach(visible) { t in
                         HStack {
@@ -58,10 +87,12 @@ struct TasksView: View {
             .sheet(item:$editingTask){ task in TaskEditorView(task:task) }
         }
     }
-    private func chip(_ title:String,_ value:TaskFilter)->some View {
-        Button(title){filter=value}.buttonStyle(.plain).font(.subheadline.weight(.semibold))
-            .padding(.horizontal,12).padding(.vertical,7)
-            .background(filter == value ? Color.accentColor.opacity(0.16) : Color(.secondarySystemBackground),in:Capsule())
+    private var statusSelection: TaskFilter {
+        switch filter {
+        case .active: return .active
+        case .closed: return .closed
+        default: return .all
+        }
     }
     private var isProjectFilter:Bool { if case .project = filter{return true}; return false }
     private var projectFilterTitle:String {

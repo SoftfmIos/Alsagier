@@ -38,3 +38,10 @@ Golden baseline: Build 17 TIME ENGINE. Do not replace scheduler semantics.
 - Dad Jokes remain offline and settings preserved.
 - Backup/restore remains compatible with new optional HabitCompletion fields.
 - HealthKit, Calendar, Prayer, notifications, Projects, Tasks compile and retain behavior.
+
+## Insights reference redesign
+- [ ] Insights matches approved App Store visual hierarchy: large title, 7/30/All Time selector, three headline metrics.
+- [ ] Focus & Emotion card shows 7-day focus bars plus emotion line and opens detail on tap.
+- [ ] Time Breakdown card shows donut + top project legend and opens detail on tap.
+- [ ] Task Completion card shows Completed / Skipped / On Time and opens History.
+- [ ] No raw unbounded record list is rendered on the main Insights dashboard.

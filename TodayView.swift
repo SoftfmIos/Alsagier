@@ -479,25 +479,45 @@ struct HistoryView: View {
     private var days:[DayPlan] {
         store.dayPlans.filter{!Calendar.current.isDateInToday($0.date)}.sorted{$0.date>$1.date}
     }
+    private var flexibleBlocks:[ScheduleBlock] { days.flatMap(\.blocks).filter{[BlockKind.task,.project,.habit].contains($0.kind)} }
+    private var totalCompleted:Int { flexibleBlocks.filter(\.isCompleted).count }
+    private var totalSkipped:Int { flexibleBlocks.filter(\.isSkipped).count }
+    private var totalMinutes:Int { flexibleBlocks.filter(\.isCompleted).reduce(0){$0+$1.durationMinutes} }
     var body:some View {
         NavigationStack {
-            List(days) { day in
-                NavigationLink { TodayHistoryDayDetail(plan:day) } label: {
-                    VStack(alignment:.leading,spacing:5) {
-                        Text(day.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().year()))
-                            .font(.headline)
-                        let flexible=day.blocks.filter{[BlockKind.task,.project,.habit].contains($0.kind)}
-                        let done=flexible.filter(\.isCompleted).count
-                        let skipped=flexible.filter(\.isSkipped).count
-                        let minutes=flexible.filter(\.isCompleted).reduce(0){$0+$1.durationMinutes}
-                        Text("\(done) completed • \(skipped) skipped • \(historyDuration(minutes))")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }.padding(.vertical,4)
+            List {
+                Section {
+                    HStack(spacing:6) {
+                        historyTotal("\(days.count)", "Days")
+                        historyTotal("\(totalCompleted)", "Completed")
+                        historyTotal("\(totalSkipped)", "Skipped")
+                        historyTotal(historyDuration(totalMinutes), "Focus")
+                    }
+                    .listRowInsets(EdgeInsets(top:10,leading:12,bottom:10,trailing:12))
+                }
+                Section("Days") {
+                    ForEach(days) { day in
+                        NavigationLink { TodayHistoryDayDetail(plan:day) } label: {
+                            VStack(alignment:.leading,spacing:5) {
+                                Text(day.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day().year()))
+                                    .font(.headline)
+                                let flexible=day.blocks.filter{[BlockKind.task,.project,.habit].contains($0.kind)}
+                                let done=flexible.filter(\.isCompleted).count
+                                let skipped=flexible.filter(\.isSkipped).count
+                                let minutes=flexible.filter(\.isCompleted).reduce(0){$0+$1.durationMinutes}
+                                Text("\(done) completed • \(skipped) skipped • \(historyDuration(minutes))")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }.padding(.vertical,4)
+                        }
+                    }
                 }
             }
             .navigationTitle("Past Days")
             .toolbar { ToolbarItem(placement:.confirmationAction){Button("Done"){dismiss()}} }
         }
+    }
+    private func historyTotal(_ value:String,_ title:String)->some View {
+        VStack(spacing:3) { Text(value).font(.headline.bold()).minimumScaleFactor(0.7).lineLimit(1); Text(title).font(.caption2).foregroundStyle(.secondary).lineLimit(1) }.frame(maxWidth:.infinity)
     }
     private func historyDuration(_ m:Int)->String { m < 60 ? "\(m)m" : String(format:"%dh %02dm",m/60,m%60) }
 }

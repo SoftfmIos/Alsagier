@@ -214,6 +214,21 @@ private struct InsightsView: View {
                 }
                 .padding(.vertical, 4)
 
+                VStack(spacing: 12) {
+                    ConcentricGauge(completion: completion, accuracy: accuracy, emotion: (avgEmotion ?? 0) / 5.0)
+                        .frame(width: 230, height: 230)
+                        .frame(maxWidth: .infinity)
+                    HStack(spacing: 18) {
+                        Label("Completion", systemImage: "circle.fill").foregroundStyle(.green)
+                        Label("Time Accuracy", systemImage: "circle.fill").foregroundStyle(.blue)
+                        Label("Emotion", systemImage: "circle.fill").foregroundStyle(.orange)
+                    }
+                    .font(.caption)
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(14)
+                .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+
                 NavigationLink { FocusEmotionDetailView(rows: rows) } label: {
                     dashboardCard(title: "Focus & Emotion") { FocusEmotionChart(days: week) }
                 }.buttonStyle(.plain)
@@ -344,20 +359,43 @@ private struct ProjectTimeDetailView: View {
 private struct HistoryDaysView: View {
     @EnvironmentObject private var store: AppStore
     private var plans:[DayPlan] { store.dayPlans.sorted { $0.date > $1.date } }
+    private var flexibleBlocks:[ScheduleBlock] { plans.flatMap(\.blocks).filter { $0.kind == .task || $0.kind == .project || $0.kind == .habit } }
+    private var totalCompleted:Int { flexibleBlocks.filter(\.isCompleted).count }
+    private var totalSkipped:Int { flexibleBlocks.filter(\.isSkipped).count }
+    private var totalMinutes:Int { flexibleBlocks.filter(\.isCompleted).reduce(0) { $0 + $1.durationMinutes } }
     var body: some View {
-        List(plans) { plan in
-            NavigationLink { HistoryDayDetailView(plan:plan) } label: {
-                VStack(alignment:.leading,spacing:5) {
-                    Text(plan.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())).font(.headline)
-                    let flexible = plan.blocks.filter { $0.kind == .task || $0.kind == .project || $0.kind == .habit }
-                    let done = flexible.filter(\.isCompleted).count
-                    let skipped = flexible.filter(\.isSkipped).count
-                    let mins = flexible.filter(\.isCompleted).reduce(0) { $0 + $1.durationMinutes }
-                    Text("\(done) completed • \(skipped) skipped • \(format(mins))")
-                        .font(.caption).foregroundStyle(.secondary)
-                }.padding(.vertical,3)
+        List {
+            Section {
+                historyTotals(days: plans.count, completed: totalCompleted, skipped: totalSkipped, minutes: totalMinutes)
+                    .listRowInsets(EdgeInsets(top:10,leading:12,bottom:10,trailing:12))
+            }
+            Section("Days") {
+                ForEach(plans) { plan in
+                    NavigationLink { HistoryDayDetailView(plan:plan) } label: {
+                        VStack(alignment:.leading,spacing:5) {
+                            Text(plan.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())).font(.headline)
+                            let flexible = plan.blocks.filter { $0.kind == .task || $0.kind == .project || $0.kind == .habit }
+                            let done = flexible.filter(\.isCompleted).count
+                            let skipped = flexible.filter(\.isSkipped).count
+                            let mins = flexible.filter(\.isCompleted).reduce(0) { $0 + $1.durationMinutes }
+                            Text("\(done) completed • \(skipped) skipped • \(format(mins))")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }.padding(.vertical,3)
+                    }
+                }
             }
         }.navigationTitle("Past Days")
+    }
+    private func historyTotals(days:Int,completed:Int,skipped:Int,minutes:Int)->some View {
+        HStack(spacing:6) {
+            historyTotal("\(days)", "Days")
+            historyTotal("\(completed)", "Completed")
+            historyTotal("\(skipped)", "Skipped")
+            historyTotal(format(minutes), "Focus")
+        }
+    }
+    private func historyTotal(_ value:String,_ title:String)->some View {
+        VStack(spacing:3) { Text(value).font(.headline.bold()).minimumScaleFactor(0.7).lineLimit(1); Text(title).font(.caption2).foregroundStyle(.secondary).lineLimit(1) }.frame(maxWidth:.infinity)
     }
     private func format(_ m:Int)->String { m < 60 ? "\(m)m" : String(format:"%dh %02dm",m/60,m%60) }
 }

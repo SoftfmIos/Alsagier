@@ -13,7 +13,7 @@ struct AlsagierLiveActivityWidget: Widget {
                     if context.state.isUpcoming {
                         Text(context.state.start, style: .time).font(.headline.monospacedDigit())
                     } else {
-                        Text(timerInterval: Date()...context.state.end, countsDown: true)
+                        Text("until ") + Text(context.state.end, style: .time)
                             .font(.headline.monospacedDigit())
                     }
                 }
@@ -51,7 +51,7 @@ struct AlsagierLiveActivityWidget: Widget {
                         Spacer()
                         Text("\(context.state.remainingCount) remaining").font(.caption2).foregroundStyle(.secondary)
                     }
-                    ForEach(Array(context.state.remaining.prefix(3).enumerated()), id: \.offset) { _, item in
+                    ForEach(Array(context.state.remaining.prefix(1).enumerated()), id: \.offset) { _, item in
                         HStack(spacing: 8) {
                             Text(item.time, style: .time).font(.caption2.monospacedDigit())
                                 .frame(width: 52, alignment: .leading)
@@ -66,14 +66,10 @@ struct AlsagierLiveActivityWidget: Widget {
                             Spacer(minLength: 0)
                         }
                     }
-                    if context.state.remainingCount > 3 {
-                        Text("+ \(context.state.remainingCount - 3) more")
-                            .font(.caption2.bold()).foregroundStyle(.secondary)
-                    }
                 }
             }
             .padding(.horizontal, 12).padding(.vertical, 10)
-            .activityBackgroundTint(Color(.secondarySystemBackground))
+            .activityBackgroundTint(Color(.systemBackground))
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -86,7 +82,7 @@ struct AlsagierLiveActivityWidget: Widget {
                     if context.state.isUpcoming {
                         Text(context.state.start, style: .time).monospacedDigit()
                     } else {
-                        Text(timerInterval: Date()...context.state.end, countsDown: true).monospacedDigit()
+                        Text(context.state.end, style: .time).monospacedDigit()
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
@@ -94,7 +90,7 @@ struct AlsagierLiveActivityWidget: Widget {
                         if !context.state.subtitle.isEmpty {
                             Text(context.state.subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         }
-                        ForEach(Array(context.state.remaining.prefix(2).enumerated()), id: \.offset) { _, item in
+                        ForEach(Array(context.state.remaining.prefix(1).enumerated()), id: \.offset) { _, item in
                             HStack(spacing: 6) {
                                 Text(item.time, style: .time).font(.caption2.monospacedDigit())
                                 Image(systemName: icon(item.kindName)).font(.caption2)
@@ -111,7 +107,7 @@ struct AlsagierLiveActivityWidget: Widget {
                 if context.state.isUpcoming {
                     Text(context.state.start, style: .time).monospacedDigit()
                 } else {
-                    Text(timerInterval: Date()...context.state.end, countsDown: true).monospacedDigit()
+                    Text(context.state.end, style: .time).monospacedDigit()
                 }
             } minimal: {
                 Image(systemName: icon(context.state.kindName)).foregroundStyle(tint(context.state.colorName))

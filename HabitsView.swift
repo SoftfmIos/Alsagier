@@ -35,7 +35,7 @@ struct HabitsView:View {
                     ForEach(store.habits) { h in
                         Button{editing=h}label:{
                             HStack(alignment:.top) {
-                                Image(systemName:h.tracksWalking ? "figure.walk" : "figure.run").foregroundStyle(.orange).padding(.top,3)
+                                Image(systemName:HabitIntelligence.profile(for:h.name).icon).foregroundStyle(.orange).padding(.top,3)
                                 VStack(alignment:.leading,spacing:5) {
                                     Text(h.name)
                                     Text(detail(h)).font(.caption).foregroundStyle(.secondary)
@@ -82,8 +82,10 @@ struct HabitsView:View {
             Text("\(health.stepsToday.formatted()) / \(h.stepTarget.formatted()) steps  •  \(health.walkingMinutesToday) / \(h.walkingMinutesTarget)m")
                 .font(.caption2).foregroundStyle(.secondary)
             ProgressView(value:progress)
-                .tint(progress >= 1 ? .green : .orange)
-            if progress >= 1 { Text("Today's walking target reached").font(.caption2).foregroundStyle(.green) }
+                .tint(progress >= 0.75 ? .green : .orange)
+            if progress >= 1 { Text("Completed • 100%+").font(.caption2).foregroundStyle(.green) }
+            else if progress >= 0.75 { Text("Achieved • \(Int(progress*100))%").font(.caption2).foregroundStyle(.green) }
+            else if progress >= 0.50 { Text("Partial • \(Int(progress*100))%").font(.caption2).foregroundStyle(.orange) }
         }
     }
 
@@ -116,10 +118,7 @@ struct HabitsView:View {
                                  calendar:calendar.todayBlocks, prayers:prayers.blocks)
     }
 
-    private func isGym(_ h:Habit)->Bool {
-        let n=h.name.lowercased()
-        return n.contains("gym") || n.contains("workout") || n.contains("fitness")
-    }
+    private func isGym(_ h:Habit)->Bool { HabitIntelligence.profile(for:h.name).key == "workout" }
 
     private func detail(_ h:Habit)->String {
         if h.tracksWalking { return "\(h.stepTarget.formatted()) steps OR \(h.walkingMinutesTarget)m walking • \(h.timesPerWeek)x/week" }
@@ -133,13 +132,23 @@ private struct HabitEditor:View {
     @State var habit:Habit
     var body:some View {
         NavigationStack { Form {
-            TextField("Habit name (e.g. Gym)",text:$habit.name)
-            Toggle("Track walking with Apple Health",isOn:$habit.tracksWalking)
+            HStack(spacing:12) {
+                Image(systemName: HabitIntelligence.profile(for:habit.name).icon).font(.title2).foregroundStyle(.orange).frame(width:32)
+                TextField("Habit name (e.g. Gym / النادي)",text:$habit.name)
+            }
+            .onChange(of: habit.name) { oldValue, newValue in
+                let oldProfile = HabitIntelligence.profile(for:oldValue)
+                let profile = HabitIntelligence.profile(for:newValue)
+                habit.tracksWalking = profile.tracksWalking
+                // Auto-suggest only while the duration still looks like the previous automatic/default value.
+                if let explicit = HabitIntelligence.explicitMinutes(in:newValue) { habit.duration = min(180,max(5,explicit)) }
+                else if oldValue.isEmpty || habit.duration == oldProfile.defaultMinutes || habit.duration == 30 { habit.duration = profile.defaultMinutes }
+            }
             if habit.tracksWalking {
                 Section("Walking target — either target completes the day") {
                     Stepper("\(habit.stepTarget.formatted()) steps",value:$habit.stepTarget,in:1000...30000,step:1000)
                     Stepper("\(habit.walkingMinutesTarget) walking minutes",value:$habit.walkingMinutesTarget,in:10...180,step:5)
-                    Text("Walking minutes use walking workouts recorded in Apple Health. Steps are consolidated from iPhone and Apple Watch.").font(.caption).foregroundStyle(.secondary)
+                    Text("75% or more of either target counts as Achieved. 100%+ is Completed. The real percentage is kept for Insights.").font(.caption).foregroundStyle(.secondary)
                 }
             }
             Picker("Duration",selection:$habit.duration){ForEach([15,30,45,60,90],id:\.self){Text("\($0) min").tag($0)}}

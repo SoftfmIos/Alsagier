@@ -187,6 +187,8 @@ struct HabitCompletion: Identifiable, Codable, Equatable {
     var habitID: UUID
     var date: Date
     var source: String = "manual"
+    var progressPercent: Double? = nil
+    var status: String? = nil
 }
 
 struct WorkInsight: Identifiable, Codable, Equatable {

@@ -18,7 +18,7 @@ final class LiveActivityManager {
         let upcoming = open.filter { $0.id != primary.id && $0.start >= (current?.end ?? now) }
 
         // Keep the ActivityKit payload small and the Lock Screen readable.
-        let visible = Array(upcoming.prefix(8)).map {
+        let visible = Array(upcoming.prefix(1)).map {
             AlsagierActivityAttributes.RemainingItem(
                 title: $0.title,
                 subtitle: $0.subtitle ?? "",

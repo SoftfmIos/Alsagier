@@ -165,15 +165,18 @@ final class AppStore: ObservableObject {
         var completedSomething = false
         var changed = false
         for habit in habits where habit.isEnabled && habit.tracksWalking {
-            let stepDone = habit.stepTarget > 0 && steps >= habit.stepTarget
-            let minuteDone = habit.walkingMinutesTarget > 0 && walkingMinutes >= habit.walkingMinutesTarget
+            let stepProgress = habit.stepTarget > 0 ? Double(steps) / Double(habit.stepTarget) : 0
+            let minuteProgress = habit.walkingMinutesTarget > 0 ? Double(walkingMinutes) / Double(habit.walkingMinutesTarget) : 0
+            let achievedProgress = max(stepProgress, minuteProgress)
+            // Walking is a progress habit: >=75% counts toward weekly consistency while the real percentage is preserved.
+            let healthAchieved = achievedProgress >= 0.75
             let matching = dayPlans[di].blocks.indices.filter {
                 dayPlans[di].blocks[$0].kind == .habit && dayPlans[di].blocks[$0].sourceID == habit.id
             }
             for bi in matching {
-                if (stepDone || minuteDone) && !dayPlans[di].blocks[bi].isCompleted {
+                if healthAchieved && !dayPlans[di].blocks[bi].isCompleted {
                     dayPlans[di].blocks[bi].isCompleted = true
-                    recordHabitCompletion(habitID: habit.id, source: "health")
+                    recordHabitCompletion(habitID: habit.id, source: "health", progressPercent: min(achievedProgress, 9.99), status: achievedProgress >= 1 ? "completed" : "achieved")
                     completedSomething = true
                 }
                 let progress = weeklyHabitProgress(habit)
@@ -706,11 +709,11 @@ final class AppStore: ObservableObject {
         return Set(days).count
     }
 
-    private func recordHabitCompletion(habitID: UUID, date: Date = Date(), source: String = "manual") {
+    private func recordHabitCompletion(habitID: UUID, date: Date = Date(), source: String = "manual", progressPercent: Double? = nil, status: String? = nil) {
         let cal = Calendar.current
         let day = cal.startOfDay(for: date)
         guard !habitCompletions.contains(where: { $0.habitID == habitID && cal.isDate($0.date, inSameDayAs: day) }) else { return }
-        habitCompletions.append(HabitCompletion(habitID: habitID, date: day, source: source))
+        habitCompletions.append(HabitCompletion(habitID: habitID, date: day, source: source, progressPercent: progressPercent, status: status))
     }
 
     private func migrateHabitCompletionsFromPlans() {

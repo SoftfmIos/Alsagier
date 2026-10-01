@@ -253,7 +253,7 @@ private struct InsightsView: View {
                 VStack(alignment:.leading,spacing:12) {
                     Text("Projects").font(.title3.bold())
                     if grouped.isEmpty { Text("Complete work to start building project insights.").foregroundStyle(.secondary) }
-                    ForEach(grouped,id:\.0) { g in
+                    ForEach(Array(grouped.prefix(5)),id:\.0) { g in
                         VStack(alignment:.leading,spacing:5) {
                             HStack { Text(g.0).font(.headline); Spacer(); Text(format(g.1)).bold() }
                             Text("\(g.2) completed • Emotion \(g.3.map{String(format:"%.1f/5",$0)} ?? "—")").font(.caption).foregroundStyle(.secondary)
@@ -263,15 +263,12 @@ private struct InsightsView: View {
                 }.sectionCard()
 
                 VStack(alignment:.leading,spacing:12) {
-                    Text("Work History").font(.title3.bold())
-                    ForEach(rows.sorted{$0.date>$1.date}.prefix(60)) { item in
-                        VStack(alignment:.leading,spacing:4) {
-                            HStack { Text(item.taskName ?? item.projectName).font(.headline); Spacer(); Text(emotion(item.happiness)) }
-                            Text(item.projectName).font(.caption).foregroundStyle(.secondary)
-                            HStack { Text(item.date.formatted(date:.abbreviated,time:.shortened)); Spacer(); Text("Planned \(item.plannedMinutes)m → Actual \(item.actualMinutes)m") }
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        Divider()
+                    Text("History").font(.title3.bold())
+                    Text("Past data is organized by day so Insights stays fast and useful as your history grows.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    NavigationLink { HistoryDaysView() } label: {
+                        Label("Browse Past Days", systemImage:"calendar")
+                            .font(.headline).frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,6)
                     }
                 }.sectionCard()
             }.padding()
@@ -285,6 +282,58 @@ private struct InsightsView: View {
     private func emotion(_ v:Int?)->String { guard let v else{return "—"}; return ["","😞","🙁","😐","🙂","😄"][max(1,min(5,v))] + " \(v)/5" }
     private func hourLabel(_ h:Int)->String { let d=Calendar.current.date(bySettingHour:h,minute:0,second:0,of:Date())!; return d.formatted(date:.omitted,time:.shortened) }
     private func format(_ m:Int)->String { m < 60 ? "\(m) min" : String(format:"%dh %02dm",m/60,m%60) }
+}
+
+
+private struct HistoryDaysView: View {
+    @EnvironmentObject private var store: AppStore
+    private var plans:[DayPlan] { store.dayPlans.sorted { $0.date > $1.date } }
+    var body: some View {
+        List(plans) { plan in
+            NavigationLink { HistoryDayDetailView(plan:plan) } label: {
+                VStack(alignment:.leading,spacing:5) {
+                    Text(plan.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())).font(.headline)
+                    let flexible = plan.blocks.filter { $0.kind == .task || $0.kind == .project || $0.kind == .habit }
+                    let done = flexible.filter(\.isCompleted).count
+                    let skipped = flexible.filter(\.isSkipped).count
+                    let mins = flexible.filter(\.isCompleted).reduce(0) { $0 + $1.durationMinutes }
+                    Text("\(done) completed • \(skipped) skipped • \(format(mins))")
+                        .font(.caption).foregroundStyle(.secondary)
+                }.padding(.vertical,3)
+            }
+        }.navigationTitle("Past Days")
+    }
+    private func format(_ m:Int)->String { m < 60 ? "\(m)m" : String(format:"%dh %02dm",m/60,m%60) }
+}
+
+private struct HistoryDayDetailView: View {
+    let plan: DayPlan
+    var body: some View {
+        List {
+            Section("Day Summary") {
+                LabeledContent("Started", value: plan.startedAt.formatted(date:.omitted,time:.shortened))
+                if let ended = plan.endedAt { LabeledContent("Ended", value: ended.formatted(date:.omitted,time:.shortened)) }
+                LabeledContent("Blocks", value:"\(plan.blocks.count)")
+            }
+            Section("Final Timeline") {
+                ForEach(plan.blocks.sorted{$0.start<$1.start}) { block in
+                    HStack(alignment:.top,spacing:10) {
+                        Image(systemName:block.kind.icon).foregroundStyle(block.color).frame(width:22)
+                        VStack(alignment:.leading,spacing:3) {
+                            HStack { Text(block.title).font(.headline); Spacer(); status(block) }
+                            if let sub=block.subtitle, !sub.isEmpty { Text(sub).font(.caption).foregroundStyle(.secondary) }
+                            Text("\(block.start.formatted(date:.omitted,time:.shortened)) – \(block.end.formatted(date:.omitted,time:.shortened))")
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
+                    }.padding(.vertical,2)
+                }
+            }
+        }.navigationTitle(plan.date.formatted(date:.abbreviated,time:.omitted))
+    }
+    @ViewBuilder private func status(_ b:ScheduleBlock)->some View {
+        if b.isCompleted { Image(systemName:"checkmark.circle.fill").foregroundStyle(.green) }
+        else if b.isSkipped { Image(systemName:"forward.circle.fill").foregroundStyle(.orange) }
+    }
 }
 
 private struct ConcentricGauge: View {

@@ -1,3 +1,4 @@
+import Charts
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -24,7 +25,7 @@ struct MoreView: View {
                         MoreHealthMenu()
                     }
                     moreRow("Data & History", subtitle: "Backup, restore and data controls", icon: "externaldrive", color: .purple) {
-                        MoreSettingsView()
+                        MoreDataHistoryView()
                     }
                     moreRow("About CapJour", subtitle: "Purpose, privacy and app version", icon: "info.circle", color: .gray) {
                         CapJourAboutView()
@@ -175,14 +176,6 @@ private struct MoreSettingsView:View {
                     Text("These actions never delete or change events in your iPhone Calendar.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Section("Insights") {
-                    NavigationLink { InsightsView() } label: { Label("Insights", systemImage:"chart.line.uptrend.xyaxis") }
-                    Text("See actual work time and optional happiness patterns. Your data stays in CapJour.").font(.caption).foregroundStyle(.secondary)
-                }
-                Section("About") {
-                    NavigationLink("About CapJour") { CapJourAboutView() }
-                    Text("Version 6.0 • Build 21").foregroundStyle(.secondary)
-                }
             }.navigationTitle("Planning & Settings")
             .onAppear{draft=store.settings}
             .onChange(of:draft){_,new in store.updateSettings(new)}
@@ -227,6 +220,52 @@ private struct MoreSettingsView:View {
     }
 }
 
+
+private struct MoreDataHistoryView: View {
+    @EnvironmentObject private var store: AppStore
+    @State private var exporting = false
+    @State private var importing = false
+    @State private var document: AlsagierBackupDocument?
+    @State private var message: String?
+    @State private var confirmClear = false
+    var body: some View {
+        List {
+            Section("History") {
+                NavigationLink { HistoryDaysView() } label: { Label("Past Days / Schedule History", systemImage: "calendar") }
+            }
+            Section("Backup") {
+                Button { document = AlsagierBackupDocument(backup: store.makeBackup()); exporting = true } label: { Label("Export CapJour Backup", systemImage: "square.and.arrow.up") }
+                Button { importing = true } label: { Label("Restore CapJour Backup", systemImage: "square.and.arrow.down") }
+                Text("Apple Health and iPhone Calendar data are not included in backups.").font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Data controls") {
+                Button("Clear Schedule History", role: .destructive) { confirmClear = true }
+            }
+        }
+        .navigationTitle("Data & History")
+        .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "CapJour-Backup") { result in
+            if case .failure = result { message = "Backup could not be exported." }
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
+            do {
+                let url = try result.get()
+                guard url.startAccessingSecurityScopedResource() else { throw CocoaError(.fileReadNoPermission) }
+                defer { url.stopAccessingSecurityScopedResource() }
+                let data = try Data(contentsOf: url)
+                let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+                store.restoreBackup(try decoder.decode(AlsagierBackup.self, from: data))
+                message = "Backup restored successfully."
+            } catch { message = "This file could not be restored as a CapJour backup." }
+        }
+        .alert("CapJour Backup", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
+            Button("OK", role: .cancel) { message = nil }
+        } message: { Text(message ?? "") }
+        .confirmationDialog("Clear schedule history?", isPresented: $confirmClear) {
+            Button("Clear Schedule History", role: .destructive) { store.clearScheduleHistory() }
+            Button("Cancel", role: .cancel) { }
+        } message: { Text("Past day plans will be deleted. Projects, tasks, habits and settings stay.") }
+    }
+}
 
 private struct CapJourAboutView: View {
     var body: some View {
@@ -360,7 +399,7 @@ private struct InsightsView: View {
                     }
                 }.buttonStyle(.plain)
 
-                NavigationLink { HistoryDaysView() } label: {
+                VStack {
                     dashboardCard(title: "Task Completion") {
                         HStack {
                             countMetric("\(completedCount)", "Completed")
@@ -636,6 +675,13 @@ private struct WeeklyReviewView: View {
 }
 
 private struct PersonalEnergyView: View {
+    @State private var searchText = ""
+    @State private var selectedRange = 30
+    @State private var showAllSessions = false
+    private var filteredSessions: [EnergySession] {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -selectedRange, to: Date()) ?? .distantPast
+        return analyzer.report.sessions.filter { $0.date >= cutoff && (searchText.isEmpty || $0.title.localizedCaseInsensitiveContains(searchText)) }
+    }
     @EnvironmentObject private var store: AppStore
     @StateObject private var analyzer = EnergyHealthAnalyzer()
     private var usable: [EnergySession] { analyzer.report.sessions.filter { $0.averageBPM != nil && !$0.workoutOverlap && $0.samples >= 3 } }
@@ -656,9 +702,34 @@ private struct PersonalEnergyView: View {
                 Text("Sleep readings and ratings are observational and may be affected by other factors.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section("Overview") {
+                Picker("Period", selection: $selectedRange) {
+                    Text("7 days").tag(7)
+                    Text("30 days").tag(30)
+                }.pickerStyle(.segmented)
+                HStack {
+                    VStack(alignment: .leading) { Text("Sessions").font(.caption); Text("\(filteredSessions.count)").font(.title2.bold()) }
+                    Spacer()
+                    VStack(alignment: .leading) { Text("HR matched").font(.caption); Text("\(filteredSessions.filter { $0.averageBPM != nil }.count)").font(.title2.bold()) }
+                }
+                if !filteredSessions.filter({ $0.averageBPM != nil }).isEmpty {
+                    Chart(filteredSessions.filter { $0.averageBPM != nil }.sorted { $0.date < $1.date }) { session in
+                        if let bpm = session.averageBPM {
+                            PointMark(x: .value("Date", session.date), y: .value("BPM", bpm))
+                                .foregroundStyle(.red)
+                        }
+                    }
+                    .frame(height: 190)
+                    .accessibilityLabel("Heart rate by work session")
+                } else {
+                    Text("No heart-rate readings matched the selected sessions. Check Apple Health permissions and recording times.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
             Section("Work sessions & heart rate") {
-                if analyzer.report.sessions.isEmpty { Text("No completed sessions in the last 30 days.").foregroundStyle(.secondary) }
-                ForEach(analyzer.report.sessions) { session in
+                TextField("Search sessions", text: $searchText)
+                if filteredSessions.isEmpty { Text("No matching sessions in the selected period.").foregroundStyle(.secondary) }
+                ForEach(Array(filteredSessions.prefix(showAllSessions ? filteredSessions.count : 20))) { session in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(session.title).font(.headline)
                         Text(session.date, style: .date).font(.caption).foregroundStyle(.secondary)
@@ -668,6 +739,9 @@ private struct PersonalEnergyView: View {
                         if session.workoutOverlap { Label("Workout overlap — excluded from comparisons", systemImage: "figure.run").font(.caption).foregroundStyle(.orange) }
                     }
                 }
+            }
+            if filteredSessions.count > 20 && !showAllSessions {
+                Button("Show more sessions (\(filteredSessions.count - 20) remaining)") { showAllSessions = true }
             }
             Section("What we noticed") {
                 if usable.count < 5 {

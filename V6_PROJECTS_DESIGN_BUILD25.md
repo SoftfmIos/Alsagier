@@ -1,0 +1,1 @@
+Build 25: Projects screen redesigned with four summary cards, independent segmented filter, status-aware project cards and progress bars. Project administrative closure and existing Time Engine retained. Full Xcode compilation not performed.

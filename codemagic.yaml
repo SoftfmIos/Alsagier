@@ -9,7 +9,7 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.softfm.alsagierapp
-      xcode: latest
+      xcode: 26.5
     scripts:
       - name: Install XcodeGen
         script: brew install xcodegen || true

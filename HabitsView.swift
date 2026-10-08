@@ -39,6 +39,13 @@ struct HabitsView:View {
                                 VStack(alignment:.leading,spacing:5) {
                                     Text(h.name)
                                     Text(detail(h)).font(.caption).foregroundStyle(.secondary)
+                                    if let next = HabitDuePlanner.nextDue(h) {
+                                        Text("Next Due: \(next.formatted(.dateTime.weekday(.wide).day().month(.wide)))")
+                                            .font(.caption2).foregroundStyle(.secondary)
+                                    } else if !h.isEnabled {
+                                        Text("Paused").font(.caption2).foregroundStyle(.secondary)
+                                    }
+
 
                                     if h.tracksWalking {
                                         walkingHealthRow(h)

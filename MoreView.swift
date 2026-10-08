@@ -1,7 +1,31 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct MoreView:View {
+/// Cascading entry points: each destination owns its existing functional controls.
+struct MoreView: View {
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    NavigationLink { MorePreferencesView() } label: {
+                        Label("Preferences & Settings", systemImage: "slider.horizontal.3")
+                    }
+                    NavigationLink { InsightsView() } label: {
+                        Label("Insights & History", systemImage: "chart.xyaxis.line")
+                    }
+                }
+                Section {
+                    NavigationLink { CapJourAboutView() } label: {
+                        Label("About CapJour", systemImage: "info.circle")
+                    }
+                }
+            }
+            .navigationTitle("More")
+        }
+    }
+}
+
+struct MorePreferencesView:View {
     @EnvironmentObject private var store:AppStore
     @EnvironmentObject private var calendar:CalendarManager
     @EnvironmentObject private var notifications:NotificationManager
@@ -59,7 +83,7 @@ struct MoreView:View {
                 }
                 Section("About") {
                     NavigationLink("About CapJour") { CapJourAboutView() }
-                    Text("Version 5.1 • Build 18").foregroundStyle(.secondary)
+                    Text("Version 6.0 • Build 21").foregroundStyle(.secondary)
                 }
             }.navigationTitle("More")
             .onAppear{draft=store.settings}

@@ -644,7 +644,7 @@ final class AppStore: ObservableObject {
 
         // Fixed habits.
         let weekday = cal.component(.weekday, from: day)
-        for habit in habits.filter({$0.isEnabled && $0.mode == .fixed && $0.weekdays.contains(weekday)}) {
+        for habit in habits.filter({$0.isEnabled && $0.mode == .fixed && $0.weekdays.contains(weekday) && !habitCompletions.contains(where: { c in c.habitID == $0.id && cal.isDate(c.date, inSameDayAs: day) })}) {
             let earliest = cal.date(bySettingHour: habit.earliestHour, minute: 0, second: 0, of: day) ?? start
             let latest = cal.date(bySettingHour: habit.latestHour, minute: 0, second: 0, of: day) ?? personalEnd
             let progress = weeklyHabitProgress(habit, on: day)
@@ -659,9 +659,10 @@ final class AppStore: ObservableObject {
             let remaining = max(0, habit.timesPerWeek - completed)
             guard remaining > 0 else { continue }
 
-            let daysLeft = max(1, 8 - cal.component(.weekday, from: day))
-            let shouldUseToday = remaining >= daysLeft || flexibleHabitAlreadyPlannedToday(habit) == false
-            guard shouldUseToday else { continue }
+            // V6: predictable due weekdays, never inject on every free day.
+            guard HabitDuePlanner.isScheduled(habit, on: day, calendar: cal) else { continue }
+            // No duplicate scheduling after this habit has been completed today.
+            guard !habitCompletions.contains(where: { $0.habitID == habit.id && cal.isDate($0.date, inSameDayAs: day) }) else { continue }
 
             let earliest = cal.date(bySettingHour: habit.earliestHour, minute: 0, second: 0, of: day) ?? start
             let latest = cal.date(bySettingHour: habit.latestHour, minute: 0, second: 0, of: day) ?? personalEnd

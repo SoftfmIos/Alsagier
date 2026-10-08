@@ -644,7 +644,14 @@ final class AppStore: ObservableObject {
 
         // Fixed habits.
         let weekday = cal.component(.weekday, from: day)
-        for habit in habits.filter({$0.isEnabled && $0.mode == .fixed && $0.weekdays.contains(weekday) && !habitCompletions.contains(where: { c in c.habitID == $0.id && cal.isDate(c.date, inSameDayAs: day) })}) {
+        for habit in habits.filter({ habit in
+            habit.isEnabled &&
+            habit.mode == .fixed &&
+            habit.weekdays.contains(weekday) &&
+            !habitCompletions.contains(where: { completion in
+                completion.habitID == habit.id && cal.isDate(completion.date, inSameDayAs: day)
+            })
+        }) {
             let earliest = cal.date(bySettingHour: habit.earliestHour, minute: 0, second: 0, of: day) ?? start
             let latest = cal.date(bySettingHour: habit.latestHour, minute: 0, second: 0, of: day) ?? personalEnd
             let progress = weeklyHabitProgress(habit, on: day)

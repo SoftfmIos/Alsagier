@@ -7,7 +7,6 @@ struct TodayView: View {
     @EnvironmentObject private var prayers: PrayerManager
     @Environment(\.scenePhase) private var scenePhase
     @State private var starting = false
-    @State private var history = false
     @State private var confirmEnd = false
     @State private var refreshing = false
     @State private var actionBlock: ScheduleBlock?
@@ -29,8 +28,6 @@ struct TodayView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Today")
-            .toolbar { Button { history=true } label: { Image(systemName:"clock.arrow.circlepath") } }
-            .sheet(isPresented:$history) { HistoryView() }
             .safeAreaInset(edge: .bottom) {
                 if let completed = lastCompletedBlock {
                     HStack {

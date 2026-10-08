@@ -9,6 +9,14 @@ struct ProjectsView: View {
     private enum ProjectFilter: String, CaseIterable, Identifiable {
         case all = "Total", active = "Active", closed = "Closed", frozen = "Frozen"
         var id: String { rawValue }
+        var symbol: String {
+            switch self {
+            case .all: return "square.stack.3d.up"
+            case .active: return "play.circle.fill"
+            case .closed: return "checkmark.circle.fill"
+            case .frozen: return "snowflake"
+            }
+        }
         var tint: Color {
             switch self {
             case .all: return .primary
@@ -42,6 +50,10 @@ struct ProjectsView: View {
                         ForEach(ProjectFilter.allCases) { filter in
                             Button { statusFilter = filter } label: {
                                 VStack(spacing: 6) {
+                                    Image(systemName: filter.symbol)
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundStyle(filter.tint)
+                                        .accessibilityHidden(true)
                                     Text("\(count(filter))")
                                         .font(.title2.weight(.bold))
                                         .foregroundStyle(filter.tint)
@@ -53,7 +65,8 @@ struct ProjectsView: View {
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 15)
-                                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 13))
+                                .background(statusFilter == filter ? filter.tint.opacity(0.13) : Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 13))
+                                .overlay(RoundedRectangle(cornerRadius: 13).strokeBorder(statusFilter == filter ? filter.tint.opacity(0.4) : .clear, lineWidth: 1))
                             }
                             .buttonStyle(.plain)
                         }
@@ -104,14 +117,18 @@ struct ProjectsView: View {
                 RoundedRectangle(cornerRadius: 3).fill(project.color.color).frame(width: 5, height: 34)
                 Text(project.name).font(.headline).foregroundStyle(.primary).lineLimit(2)
                 Spacer(minLength: 4)
-                Text(LocalizedStringKey(project.status.rawValue))
+                Label {
+                    Text(LocalizedStringKey(project.status.rawValue))
+                } icon: {
+                    Image(systemName: project.status == .active ? "play.circle.fill" : (project.status == .frozen ? "snowflake" : "checkmark.circle.fill"))
+                }
                     .font(.caption.weight(.medium))
                     .foregroundStyle(statusColor)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color(.tertiarySystemFill))
-                    Capsule().fill(statusColor).frame(width: geo.size.width * fraction)
+                    Capsule().fill(project.color.color).frame(width: geo.size.width * fraction)
                 }
             }
             .frame(height: 7)

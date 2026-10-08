@@ -3,11 +3,11 @@ import Foundation
 
 enum ProjectColor: String, Codable, CaseIterable, Identifiable {
     // green is retained only so existing V5 data can still decode. It is not selectable for projects.
-    case blue, green, orange, purple, pink, teal, indigo, red, cyan, brown, gold
+    case blue, green, orange, purple, pink, teal, indigo, red, cyan, brown, gold, emerald, burgundy, olive, charcoal, coral
     var id: String { rawValue }
 
     static var projectChoices: [ProjectColor] {
-        [.blue, .orange, .purple, .pink, .teal, .indigo, .red, .cyan, .brown, .gold]
+        [.blue, .orange, .purple, .pink, .teal, .indigo, .red, .cyan, .brown, .gold, .emerald, .burgundy, .olive, .charcoal, .coral]
     }
 
     var color: Color {
@@ -23,6 +23,11 @@ enum ProjectColor: String, Codable, CaseIterable, Identifiable {
         case .cyan: return .cyan
         case .brown: return .brown
         case .gold: return Color(red: 0.72, green: 0.48, blue: 0.02)
+        case .emerald: return Color(red: 22/255, green: 139/255, blue: 82/255)
+        case .burgundy: return Color(red: 135/255, green: 48/255, blue: 77/255)
+        case .olive: return Color(red: 119/255, green: 133/255, blue: 43/255)
+        case .charcoal: return Color(red: 71/255, green: 85/255, blue: 105/255)
+        case .coral: return Color(red: 233/255, green: 120/255, blue: 98/255)
         }
     }
 }

@@ -57,6 +57,15 @@ enum HabitScheduleMode: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum HabitRecurrence: String, Codable, CaseIterable, Identifiable {
+    case weekly = "Weekly"
+    case everyTwoWeeks = "Every 2 weeks"
+    case everyThreeWeeks = "Every 3 weeks"
+    case everyFourWeeks = "Every 4 weeks"
+    case monthly = "Every calendar month"
+    var id: String { rawValue }
+}
+
 enum PreferredPeriod: String, Codable, CaseIterable, Identifiable {
     case anytime = "Anytime", morning = "Morning", afternoon = "Afternoon", evening = "Evening"
     var id: String { rawValue }
@@ -124,25 +133,29 @@ struct Habit: Identifiable, Codable, Equatable {
     var isEnabled = true
     var travelMinutes: Int = 0
     var tracksWalking: Bool = false
+    var recurrence: HabitRecurrence = .weekly
+    var recurrenceAnchor: Date = Calendar.current.startOfDay(for: Date())
     var stepTarget: Int = 10000
     var walkingMinutesTarget: Int = 60
 
     enum CodingKeys: String, CodingKey {
         case id, name, duration, mode, weekdays, timesPerWeek, earliestHour, latestHour
-        case preferredPeriod, priority, isEnabled, travelMinutes, tracksWalking, stepTarget, walkingMinutesTarget
+        case preferredPeriod, priority, isEnabled, travelMinutes, tracksWalking, stepTarget, walkingMinutesTarget, recurrence, recurrenceAnchor
     }
 
     init(id: UUID = UUID(), name: String, duration: Int = 30, mode: HabitScheduleMode = .fixed,
          weekdays: Set<Int> = [], timesPerWeek: Int = 3, earliestHour: Int = 6, latestHour: Int = 23,
          preferredPeriod: PreferredPeriod = .anytime, priority: WorkPriority = .normal,
          isEnabled: Bool = true, travelMinutes: Int? = nil, tracksWalking: Bool? = nil,
-         stepTarget: Int = 10000, walkingMinutesTarget: Int = 60) {
+         stepTarget: Int = 10000, walkingMinutesTarget: Int = 60,
+         recurrence: HabitRecurrence = .weekly, recurrenceAnchor: Date = Date()) {
         self.id=id; self.name=name; self.duration=duration; self.mode=mode; self.weekdays=weekdays
         self.timesPerWeek=timesPerWeek; self.earliestHour=earliestHour; self.latestHour=latestHour
         self.preferredPeriod=preferredPeriod; self.priority=priority; self.isEnabled=isEnabled
         self.travelMinutes = travelMinutes ?? (name.localizedCaseInsensitiveContains("gym") ? 30 : 0)
         self.tracksWalking = tracksWalking ?? name.localizedCaseInsensitiveContains("walk")
         self.stepTarget = stepTarget; self.walkingMinutesTarget = walkingMinutesTarget
+        self.recurrence = recurrence; self.recurrenceAnchor = Calendar.current.startOfDay(for: recurrenceAnchor)
     }
 
     init(from decoder: Decoder) throws {
@@ -162,6 +175,8 @@ struct Habit: Identifiable, Codable, Equatable {
         tracksWalking = try c.decodeIfPresent(Bool.self, forKey:.tracksWalking) ?? name.localizedCaseInsensitiveContains("walk")
         stepTarget = try c.decodeIfPresent(Int.self, forKey:.stepTarget) ?? 10000
         walkingMinutesTarget = try c.decodeIfPresent(Int.self, forKey:.walkingMinutesTarget) ?? 60
+        recurrence = try c.decodeIfPresent(HabitRecurrence.self, forKey:.recurrence) ?? .weekly
+        recurrenceAnchor = try c.decodeIfPresent(Date.self, forKey:.recurrenceAnchor) ?? Calendar.current.startOfDay(for: Date())
     }
 }
 
@@ -203,6 +218,35 @@ struct WorkInsight: Identifiable, Codable, Equatable {
     var plannedMinutes: Int
     var actualMinutes: Int
     var happiness: Int?
+    var scheduleBlockID: UUID? = nil
+
+    enum CodingKeys: String, CodingKey {
+        case id, projectID, projectName, taskID, taskName, blockKind, date, startedAt,
+             plannedMinutes, actualMinutes, happiness, scheduleBlockID
+    }
+    init(id: UUID = UUID(), projectID: UUID?, projectName: String, taskID: UUID?, taskName: String?,
+         blockKind: BlockKind, date: Date, startedAt: Date? = nil, plannedMinutes: Int,
+         actualMinutes: Int, happiness: Int?, scheduleBlockID: UUID? = nil) {
+        self.id = id; self.projectID = projectID; self.projectName = projectName
+        self.taskID = taskID; self.taskName = taskName; self.blockKind = blockKind
+        self.date = date; self.startedAt = startedAt; self.plannedMinutes = plannedMinutes
+        self.actualMinutes = actualMinutes; self.happiness = happiness; self.scheduleBlockID = scheduleBlockID
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        projectID = try c.decodeIfPresent(UUID.self, forKey: .projectID)
+        projectName = try c.decode(String.self, forKey: .projectName)
+        taskID = try c.decodeIfPresent(UUID.self, forKey: .taskID)
+        taskName = try c.decodeIfPresent(String.self, forKey: .taskName)
+        blockKind = try c.decode(BlockKind.self, forKey: .blockKind)
+        date = try c.decode(Date.self, forKey: .date)
+        startedAt = try c.decodeIfPresent(Date.self, forKey: .startedAt)
+        plannedMinutes = try c.decode(Int.self, forKey: .plannedMinutes)
+        actualMinutes = try c.decode(Int.self, forKey: .actualMinutes)
+        happiness = try c.decodeIfPresent(Int.self, forKey: .happiness)
+        scheduleBlockID = try c.decodeIfPresent(UUID.self, forKey: .scheduleBlockID)
+    }
 }
 
 struct DayPlan: Identifiable, Codable, Equatable {
@@ -233,4 +277,12 @@ struct AppSettings: Codable, Equatable {
         emailMinutes = try c.decodeIfPresent(Int.self, forKey:.emailMinutes) ?? 30
         dadJokesEnabled = try c.decodeIfPresent(Bool.self, forKey:.dadJokesEnabled) ?? true
     }
+}
+
+struct CompletionCorrection: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var planID: UUID
+    var blockID: UUID
+    var correctedAt: Date
+    var reason: String
 }

@@ -1,31 +1,121 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Cascading entry points: each destination owns its existing functional controls.
 struct MoreView: View {
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    NavigationLink { MorePreferencesView() } label: {
-                        Label("Preferences & Settings", systemImage: "slider.horizontal.3")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("CapJour").font(.title2.bold())
+                        Text("Your day. Your direction.").font(.subheadline).foregroundStyle(.secondary)
                     }
-                    NavigationLink { InsightsView() } label: {
-                        Label("Insights & History", systemImage: "chart.xyaxis.line")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(18)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+
+                    moreRow("Insights & Intelligence", subtitle: "Performance, emotion and work patterns", icon: "chart.xyaxis.line", color: .blue) {
+                        MoreInsightsMenu()
                     }
-                }
-                Section {
-                    NavigationLink { CapJourAboutView() } label: {
-                        Label("About CapJour", systemImage: "info.circle")
+                    moreRow("Planning Preferences", subtitle: "Work hours, reminders and settings", icon: "slider.horizontal.3", color: .teal) {
+                        MoreSettingsView()
                     }
-                }
+                    moreRow("Health & Connections", subtitle: "Apple Health and connected permissions", icon: "heart.text.square", color: .pink) {
+                        MoreHealthMenu()
+                    }
+                    moreRow("Data & History", subtitle: "Backup, restore and data controls", icon: "externaldrive", color: .purple) {
+                        MoreSettingsView()
+                    }
+                    moreRow("About CapJour", subtitle: "Purpose, privacy and app version", icon: "info.circle", color: .gray) {
+                        CapJourAboutView()
+                    }
+                }.padding()
             }
             .navigationTitle("More")
         }
     }
+
+    private func moreRow<Destination: View>(_ title: String, subtitle: String, icon: String, color: Color, @ViewBuilder destination: () -> Destination) -> some View {
+        NavigationLink(destination: destination()) {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundStyle(color)
+                    .frame(width: 46, height: 46)
+                    .background(color.opacity(0.10), in: RoundedRectangle(cornerRadius: 13))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(.headline).foregroundStyle(.primary)
+                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+            }
+            .padding(13)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 17))
+        }
+        .buttonStyle(.plain)
+    }
 }
 
-struct MorePreferencesView:View {
+private struct MoreInsightsMenu: View {
+    var body: some View {
+        List {
+            NavigationLink { InsightsView() } label: { Label("Insights Dashboard", systemImage: "chart.bar.xaxis") }
+            NavigationLink { UnratedEmotionView() } label: { Label("Emotion Check-in", systemImage: "face.smiling") }
+            NavigationLink { WeeklyReviewView() } label: { Label("Weekly Review", systemImage: "calendar.badge.clock") }
+            NavigationLink { HistoricalCorrectionsView() } label: { Label("Correct Past Completions", systemImage: "arrow.uturn.backward.circle") }
+            NavigationLink { PersonalEnergyView() } label: { Label("Personal Energy", systemImage: "heart.text.square") }
+        }
+        .navigationTitle("Insights & Intelligence")
+    }
+}
+
+private struct MoreHealthMenu: View {
+    var body: some View {
+        List {
+            Label("Apple Health", systemImage: "heart.text.square")
+            Text("CapJour reads only the health measurements you authorize. Health-based recommendations are not yet enabled in this development checkpoint.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+        .navigationTitle("Health & Connections")
+    }
+}
+
+private struct UnratedEmotionView: View {
+    @EnvironmentObject private var store: AppStore
+    private var missing: [WorkInsight] {
+        store.insights.filter { $0.happiness == nil }.sorted { $0.date > $1.date }
+    }
+    var body: some View {
+        List {
+            if missing.isEmpty {
+                ContentUnavailableView("All Caught Up", systemImage: "checkmark.circle", description: Text("All recorded work sessions have an emotion rating."))
+            }
+            ForEach(missing) { insight in
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(insight.taskName ?? insight.projectName).font(.headline)
+                    Text(insight.date, style: .date).font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        ForEach(1...5, id: \.self) { rating in
+                            Button { store.setHappiness(for: insight.id, rating: rating) } label: {
+                                Image(systemName: "star.fill")
+                                    .foregroundStyle(.orange)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Rate \(rating) of 5")
+                        }
+                    }
+                }
+                .padding(.vertical, 5)
+            }
+        }
+        .navigationTitle("Emotion Check-in")
+    }
+}
+
+private struct MoreSettingsView:View {
+    @AppStorage("capjour.interfaceLanguage") private var interfaceLanguage = "automatic"
     @EnvironmentObject private var store:AppStore
     @EnvironmentObject private var calendar:CalendarManager
     @EnvironmentObject private var notifications:NotificationManager
@@ -38,8 +128,16 @@ struct MorePreferencesView:View {
     @State private var backupMessage:String?
 
     var body:some View {
-        NavigationStack {
-            Form {
+        Form {
+                Section("Language / اللغة") {
+                    Picker("App Language / لغة التطبيق", selection: $interfaceLanguage) {
+                        Text("Automatic / تلقائي").tag("automatic")
+                        Text("English").tag("english")
+                        Text("العربية").tag("arabic")
+                    }
+                    Text("Language preference is saved separately from projects and tasks.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Section("Day boundaries") {
                     Picker("Work ends",selection:$draft.workEndHour){ForEach(12...22,id:\.self){Text(time($0)).tag($0)}}
                     Picker("Personal planning until",selection:$draft.personalEndHour){ForEach(17...23,id:\.self){Text(time($0)).tag($0)}}
@@ -85,7 +183,7 @@ struct MorePreferencesView:View {
                     NavigationLink("About CapJour") { CapJourAboutView() }
                     Text("Version 6.0 • Build 21").foregroundStyle(.secondary)
                 }
-            }.navigationTitle("More")
+            }.navigationTitle("Planning & Settings")
             .onAppear{draft=store.settings}
             .onChange(of:draft){_,new in store.updateSettings(new)}
             .fileExporter(isPresented:$exporting,document:backupDocument,contentType:.json,defaultFilename:"CapJour-Backup") { result in
@@ -122,7 +220,6 @@ struct MorePreferencesView:View {
             } message: {
                 Text("Deletes CapJour Projects, Tasks, Habits, schedules and settings. Your iPhone Calendar is not changed.")
             }
-        }
     }
     private func time(_ hour:Int)->String {
         let h=hour>12 ? hour-12:hour
@@ -168,7 +265,7 @@ private struct CapJourAboutView: View {
 
                 Divider()
                 Text("CapJour by Softfm").font(.headline)
-                Text("Version 5.1 • Build 18").foregroundStyle(.secondary)
+                Text("Version 6.0 • Build 21").foregroundStyle(.secondary)
             }
             .padding()
         }
@@ -471,4 +568,183 @@ private struct ConcentricGauge: View {
 
 private extension View {
     func sectionCard()->some View { self.padding().frame(maxWidth:.infinity,alignment:.leading).background(Color(.systemBackground),in:RoundedRectangle(cornerRadius:18)) }
+}
+
+// Review is calculated from recorded sessions; missing emotion is not scored as negative.
+private struct WeeklyReviewView: View {
+    @EnvironmentObject private var store: AppStore
+    private var sessions: [WorkInsight] {
+        let start = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        return store.insights.filter { $0.date >= start }
+    }
+    var body: some View {
+        List {
+            Section("Last 7 days") {
+                LabeledContent("Completed work sessions", value: "\(sessions.count)")
+                LabeledContent("Recorded focus time", value: "\(sessions.reduce(0) { $0 + $1.actualMinutes }) minutes")
+                LabeledContent("Unrated sessions", value: "\(sessions.filter { $0.happiness == nil }.count)")
+                if let mean = averageEmotion {
+                    LabeledContent("Average emotion", value: String(format: "%.1f / 5", mean))
+                }
+            }
+            Section("Habits") {
+                let start = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+                let completed = store.habitCompletions.filter { $0.date >= start }
+                LabeledContent("Habit completions", value: "\(completed.count)")
+                LabeledContent("Distinct habits", value: "\(Set(completed.map(\.habitID)).count)")
+                Text("Completions are counted from recorded occurrences, not free calendar slots.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Duration suggestions — you decide") {
+                ForEach(store.tasks.filter { !$0.isCompleted }) { task in
+                    if let minutes = store.suggestedDuration(for: task) {
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(task.title)
+                                Text("Current \(task.duration) min · Suggested \(minutes) min")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Apply") { store.acceptSuggestedDuration(taskID: task.id, minutes: minutes) }
+                        }
+                    }
+                }
+                Text("Based on at least three recorded sessions. No duration changes without tapping Apply.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Time accuracy") {
+                let planned = sessions.reduce(0) { $0 + $1.plannedMinutes }
+                let actual = sessions.reduce(0) { $0 + $1.actualMinutes }
+                Text("Planned: \(planned) min · Actual: \(actual) min")
+                if sessions.count >= 3 && planned > 0 {
+                    Text(actual > planned ? "Your recorded sessions took longer than planned. Consider reviewing future estimates." : "Your recorded sessions generally fit within planned time.")
+                } else {
+                    Text("More completed sessions are needed before making a duration suggestion.")
+                }
+            }
+            Section("How to read this") {
+                Text("This review uses completed CapJour sessions only. It does not infer stress or health conditions.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("Weekly Review")
+    }
+    private var averageEmotion: Double? {
+        let ratings = sessions.compactMap(\.happiness)
+        return ratings.isEmpty ? nil : Double(ratings.reduce(0, +)) / Double(ratings.count)
+    }
+}
+
+private struct PersonalEnergyView: View {
+    @EnvironmentObject private var store: AppStore
+    @StateObject private var analyzer = EnergyHealthAnalyzer()
+    private var usable: [EnergySession] { analyzer.report.sessions.filter { $0.averageBPM != nil && !$0.workoutOverlap && $0.samples >= 3 } }
+    var body: some View {
+        List {
+            Section("Apple Health") {
+                if analyzer.loading { ProgressView("Analyzing recent sessions…") }
+                if let message = analyzer.report.message { Text(message).foregroundStyle(.secondary) }
+                if let hours = analyzer.report.sleepHours {
+                    Text("Recorded sleep in the past 24 hours: \(hours, specifier: "%.1f") hours")
+                } else { Text("No recent sleep samples available").foregroundStyle(.secondary) }
+                Button("Refresh Health Analysis") { Task { await analyzer.analyze(store.insights) } }
+            }
+            Section("Sleep & recorded emotion") {
+                if let comparison = analyzer.report.sleepComparison {
+                    Text(comparison)
+                }
+                Text("Sleep readings and ratings are observational and may be affected by other factors.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Work sessions & heart rate") {
+                if analyzer.report.sessions.isEmpty { Text("No completed sessions in the last 30 days.").foregroundStyle(.secondary) }
+                ForEach(analyzer.report.sessions) { session in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(session.title).font(.headline)
+                        Text(session.date, style: .date).font(.caption).foregroundStyle(.secondary)
+                        if let bpm = session.averageBPM {
+                            Text("Average sampled heart rate: \(bpm, specifier: "%.0f") bpm · \(session.samples) readings")
+                        } else { Text("No matching heart-rate readings").foregroundStyle(.secondary) }
+                        if session.workoutOverlap { Label("Workout overlap — excluded from comparisons", systemImage: "figure.run").font(.caption).foregroundStyle(.orange) }
+                    }
+                }
+            }
+            Section("What we noticed") {
+                if usable.count < 5 {
+                    Text("Early observation: at least five work sessions with three or more heart-rate readings and no overlapping workout are needed before comparing patterns.")
+                } else {
+                    let morning = usable.filter { Calendar.current.component(.hour, from: $0.date) < 12 }
+                    let later = usable.filter { Calendar.current.component(.hour, from: $0.date) >= 12 }
+                    if morning.count >= 3 && later.count >= 3 {
+                        let a = morning.compactMap(\.averageBPM).reduce(0,+) / Double(morning.count)
+                        let b = later.compactMap(\.averageBPM).reduce(0,+) / Double(later.count)
+                        Text("Morning: \(a, specifier: "%.0f") bpm (\(morning.count) sessions); later: \(b, specifier: "%.0f") bpm (\(later.count) sessions).")
+                        Text("Emerging observation, not a stress diagnosis. Activity, sleep, caffeine and other factors can affect heart rate. Compare similar tasks before adjusting your schedule.")
+                    } else {
+                        Text("More comparable morning and later sessions are needed to identify a time-of-day pattern.")
+                    }
+                }
+            }
+            Section("Privacy & interpretation") {
+                Text("CapJour reads authorized Apple Health data only. Missing data does not mean zero heart rate or poor sleep. WHOOP measurements appear only when shared with Apple Health. No automatic scheduling changes are made.")
+                    .font(.footnote)
+            }
+        }
+        .navigationTitle("Personal Energy")
+        .task { await analyzer.analyze(store.insights) }
+    }
+}
+
+
+private struct HistoricalCorrectionsView: View {
+    @EnvironmentObject private var store: AppStore
+    @State private var reason = "Accidental completion"
+    @State private var confirmation: UUID?
+    private var candidates: [(DayPlan, ScheduleBlock)] {
+        store.dayPlans.filter { !Calendar.current.isDateInToday($0.date) }.flatMap { plan in
+            plan.blocks.filter { $0.isCompleted && ($0.kind == .task || $0.kind == .project || $0.kind == .habit) }
+                .map { (plan, $0) }
+        }.sorted { $0.0.date > $1.0.date }
+    }
+    var body: some View {
+        List {
+            Section("Correction reason") {
+                TextField("Reason", text: $reason)
+                Text("Past timelines are preserved. Corrections are recorded with their time and reason.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Completed historical sessions") {
+                ForEach(candidates.indices, id: \.self) { index in
+                    let (plan, block) = candidates[index]
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(block.title)
+                            Text(plan.date, style: .date).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Correct") { confirmation = block.id }
+                            .buttonStyle(.bordered)
+                            .confirmationDialog("Correct this historical completion?", isPresented: Binding(
+                                get: { confirmation == block.id },
+                                set: { if !$0 { confirmation = nil } }
+                            )) {
+                                Button("Mark Not Done", role: .destructive) {
+                                    _ = store.correctHistoricalCompletion(planID: plan.id, blockID: block.id, reason: reason)
+                                    confirmation = nil
+                                }
+                            }
+                    }
+                }
+            }
+            Section("Correction log") {
+                ForEach(store.correctionHistory.reversed()) { entry in
+                    VStack(alignment: .leading) {
+                        Text(entry.reason)
+                        Text(entry.correctedAt, style: .date).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Past Corrections")
+    }
 }

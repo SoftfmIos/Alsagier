@@ -220,6 +220,80 @@ final class AppStore: ObservableObject {
         rebalanceFuture(calendar: calendar, prayers: prayers)
     }
 
+    // A deliberate correction is allowed only on today's active plan.
+    // Older plans remain frozen; their history is never silently rebuilt.
+    func undoCompletion(_ block: ScheduleBlock, calendar: [ScheduleBlock], prayers: [ScheduleBlock]) {
+        guard let di = todayIndex, dayPlans[di].endedAt == nil,
+              let bi = dayPlans[di].blocks.firstIndex(where: { $0.id == block.id }),
+              dayPlans[di].blocks[bi].isCompleted else { return }
+        dayPlans[di].blocks[bi].isCompleted = false
+        if block.kind == .task, let source = block.sourceID {
+            if let ti = tasks.firstIndex(where: { $0.id == source }) { tasks[ti].isCompleted = false }
+            // Remove only the completion record corresponding to the corrected session.
+            if let index = insights.lastIndex(where: { $0.scheduleBlockID == block.id }) {
+                insights.remove(at: index)
+            }
+        } else if block.kind == .project, let source = block.sourceID {
+            if let index = insights.lastIndex(where: { $0.scheduleBlockID == block.id }) {
+                insights.remove(at: index)
+            }
+        } else if block.kind == .habit, let source = block.sourceID {
+            if let index = habitCompletions.lastIndex(where: { $0.habitID == source && Calendar.current.isDate($0.date, inSameDayAs: dayPlans[di].date) && $0.source == "manual" }) {
+                habitCompletions.remove(at: index)
+            }
+            for i in dayPlans[di].blocks.indices where dayPlans[di].blocks[i].kind == .travel && dayPlans[di].blocks[i].sourceID == source {
+                dayPlans[di].blocks[i].isCompleted = false
+            }
+        }
+        save()
+        rebalanceFuture(calendar: calendar, prayers: prayers)
+    }
+
+    // Explicit historical correction: never rebuild an old day or silently change its timeline.
+    // A session-specific audit record is persisted separately from the day plan.
+    @Published private(set) var correctionHistory: [CompletionCorrection] = []
+    private let correctionsKey = "capjour.v6.completionCorrections"
+
+    func correctHistoricalCompletion(planID: UUID, blockID: UUID, reason: String) -> Bool {
+        guard let dayIndex = dayPlans.firstIndex(where: { $0.id == planID }),
+              !Calendar.current.isDateInToday(dayPlans[dayIndex].date),
+              let blockIndex = dayPlans[dayIndex].blocks.firstIndex(where: { $0.id == blockID }),
+              dayPlans[dayIndex].blocks[blockIndex].isCompleted else { return false }
+        let block = dayPlans[dayIndex].blocks[blockIndex]
+        guard block.kind == .task || block.kind == .project || block.kind == .habit else { return false }
+        dayPlans[dayIndex].blocks[blockIndex].isCompleted = false
+        if block.kind == .task, let source = block.sourceID,
+           let ti = tasks.firstIndex(where: { $0.id == source }) {
+            let anyOtherCompleted = dayPlans.contains { plan in plan.blocks.contains { $0.id != blockID && $0.sourceID == source && $0.kind == .task && $0.isCompleted } }
+            tasks[ti].isCompleted = anyOtherCompleted
+        }
+        if block.kind == .habit, let source = block.sourceID {
+            if let i = habitCompletions.lastIndex(where: { $0.habitID == source && Calendar.current.isDate($0.date, inSameDayAs: dayPlans[dayIndex].date) && $0.source == "manual" }) {
+                habitCompletions.remove(at: i)
+            }
+        }
+        insights.removeAll { $0.scheduleBlockID == blockID }
+        correctionHistory.append(CompletionCorrection(planID: planID, blockID: blockID, correctedAt: Date(), reason: reason))
+        save()
+        return true
+    }
+
+    // Evidence-based suggestion only. Never silently changes a user's task duration.
+    func suggestedDuration(for task: ExecutiveTask) -> Int? {
+        let matching = insights.filter { $0.taskID == task.id && $0.actualMinutes > 0 }.suffix(8)
+        guard matching.count >= 3 else { return nil }
+        let sorted = matching.map(\.actualMinutes).sorted()
+        let median = sorted[sorted.count / 2]
+        let rounded = max(5, Int((Double(median) / 5.0).rounded()) * 5)
+        return abs(rounded - task.duration) >= 5 ? rounded : nil
+    }
+
+    func acceptSuggestedDuration(taskID: UUID, minutes: Int) {
+        guard minutes >= 5 && minutes <= 480, let index = tasks.firstIndex(where: { $0.id == taskID }) else { return }
+        tasks[index].duration = minutes
+        save()
+    }
+
     private func recordCompletionInsight(for block: ScheduleBlock) {
         guard block.kind == .task || block.kind == .project else { return }
         let project: Project?
@@ -236,7 +310,7 @@ final class AppStore: ObservableObject {
         let actual = max(1, Int(ceil(actualEnd.timeIntervalSince(block.start) / 60)))
         insights.append(WorkInsight(projectID: project?.id, projectName: project?.name ?? block.title,
                                     taskID: task?.id, taskName: task?.title ?? block.subtitle, blockKind: block.kind,
-                                    date: now, startedAt: block.start, plannedMinutes: block.durationMinutes, actualMinutes: actual, happiness: nil))
+                                    date: now, startedAt: block.start, plannedMinutes: block.durationMinutes, actualMinutes: actual, happiness: nil, scheduleBlockID: block.id))
     }
 
     func setHappiness(for insightID: UUID, rating: Int) {
@@ -644,14 +718,8 @@ final class AppStore: ObservableObject {
 
         // Fixed habits.
         let weekday = cal.component(.weekday, from: day)
-        for habit in habits.filter({ habit in
-            habit.isEnabled &&
-            habit.mode == .fixed &&
-            habit.weekdays.contains(weekday) &&
-            !habitCompletions.contains(where: { completion in
-                completion.habitID == habit.id && cal.isDate(completion.date, inSameDayAs: day)
-            })
-        }) {
+        for habit in habits.filter({$0.isEnabled && $0.mode == .fixed && HabitDueEngine.isDue($0, on: day)}) {
+            guard !habitCompletions.contains(where: { $0.habitID == habit.id && cal.isDate($0.date, inSameDayAs: day) }) else { continue }
             let earliest = cal.date(bySettingHour: habit.earliestHour, minute: 0, second: 0, of: day) ?? start
             let latest = cal.date(bySettingHour: habit.latestHour, minute: 0, second: 0, of: day) ?? personalEnd
             let progress = weeklyHabitProgress(habit, on: day)
@@ -659,23 +727,23 @@ final class AppStore: ObservableObject {
                         subtitle: "\(progress.completed)/\(progress.target) completed this week")
         }
 
-        // Flexible weekly habits. Schedule today when remaining sessions need available days.
-        let interval = cal.dateInterval(of: .weekOfYear, for: day)
-        for habit in habits.filter({$0.isEnabled && $0.mode == .flexible}) {
-            let completed = completedHabitCount(habit, in: interval)
-            let remaining = max(0, habit.timesPerWeek - completed)
-            guard remaining > 0 else { continue }
-
-            // V6: predictable due weekdays, never inject on every free day.
-            guard HabitDuePlanner.isScheduled(habit, on: day, calendar: cal) else { continue }
-            // No duplicate scheduling after this habit has been completed today.
-            guard !habitCompletions.contains(where: { $0.habitID == habit.id && cal.isDate($0.date, inSameDayAs: day) }) else { continue }
-
+        // Flexible habits: only their selected due dates are eligible for placement.
+        // A free slot on a non-due date never creates another occurrence.
+        for habit in habits.filter({ $0.isEnabled && $0.mode == .flexible && (HabitDueEngine.isDue($0, on: day) || isEligibleFlexibleFallback($0, on: day)) }) {
+            let cycle = HabitDueEngine.cycleInterval(for: habit, on: day)
+            let completed = completedHabitCount(habit, in: cycle)
+            let target = habit.recurrence == .weekly ? max(1, min(7, habit.timesPerWeek)) : 1
+            guard completed < target else { continue }
+            // If already completed today, don't schedule again, even after refresh.
+            let alreadyCompletedToday = habitCompletions.contains {
+                $0.habitID == habit.id && cal.isDate($0.date, inSameDayAs: day)
+            }
+            guard !alreadyCompletedToday else { continue }
             let earliest = cal.date(bySettingHour: habit.earliestHour, minute: 0, second: 0, of: day) ?? start
             let latest = cal.date(bySettingHour: habit.latestHour, minute: 0, second: 0, of: day) ?? personalEnd
             let preferred = preferredStart(for: habit, day: day, fallback: max(start, earliest))
             appendHabit(habit, preferred: max(preferred, earliest), latest: min(latest, personalEnd),
-                        subtitle: "\(completed)/\(habit.timesPerWeek) completed this week")
+                        subtitle: "\(completed)/\(target) completed this cycle")
         }
 
         // Communication windows.
@@ -695,6 +763,25 @@ final class AppStore: ObservableObject {
         }
 
         return result.sorted {$0.start < $1.start}
+    }
+
+    // A missed flexible due date may roll forward within the SAME eligible cycle.
+    // Only after the original due date, never before it; no duplicate completed/planned occurrence.
+    private func isEligibleFlexibleFallback(_ habit: Habit, on day: Date) -> Bool {
+        guard let cycle = HabitDueEngine.cycleInterval(for: habit, on: day),
+              habit.mode == .flexible, !HabitDueEngine.isDue(habit, on: day) else { return false }
+        let cal = Calendar.current
+        let dueDates = stride(from: 0, through: max(0, Int(cycle.duration / 86400) + 1), by: 1).compactMap {
+            cal.date(byAdding: .day, value: $0, to: cycle.start)
+        }.filter { $0 < cycle.end && HabitDueEngine.isDue(habit, on: $0) }
+        guard dueDates.contains(where: { $0 < cal.startOfDay(for: day) }) else { return false }
+        let previouslyScheduled = dayPlans.contains { plan in
+            plan.date >= cycle.start && plan.date < cycle.end && plan.blocks.contains {
+                $0.kind == .habit && $0.sourceID == habit.id && !$0.isSkipped
+            }
+        }
+        guard !previouslyScheduled else { return false }
+        return !habitCompletions.contains { $0.habitID == habit.id && $0.date >= cycle.start && $0.date < cycle.end }
     }
 
     private func preferredStart(for habit: Habit, day: Date, fallback: Date) -> Date {
@@ -781,10 +868,12 @@ final class AppStore: ObservableObject {
         if let d = try? enc.encode(insights) { defaults.set(d, forKey: iKey) }
         if let d = try? enc.encode(habitCompletions) { defaults.set(d, forKey: hcKey) }
         if let d = try? enc.encode(settings) { defaults.set(d, forKey: sKey) }
+        if let d = try? enc.encode(correctionHistory) { defaults.set(d, forKey: correctionsKey) }
     }
 
     private func load() {
         let dec = JSONDecoder()
+        if let d = defaults.data(forKey: correctionsKey), let x = try? dec.decode([CompletionCorrection].self, from: d) { correctionHistory = x }
         if let d=defaults.data(forKey:pKey), let x=try? dec.decode([Project].self,from:d){projects=x}
         if let d=defaults.data(forKey:tKey), let x=try? dec.decode([ExecutiveTask].self,from:d){tasks=x}
         if let d=defaults.data(forKey:hKey), let x=try? dec.decode([Habit].self,from:d){habits=x}

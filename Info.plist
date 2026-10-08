@@ -35,7 +35,7 @@
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>CapJour reads your step count and walking activity from Apple Health to track progress toward your personal walking habits and daily goals.</string>
+	<string>CapJour reads authorized steps, workouts, heart rate and sleep from Apple Health to show walking progress and explain patterns around completed work sessions. Health data is not written back to Apple Health.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>CapJour uses HealthKit access to support progress and completion tracking for your personal walking habits. CapJour does not write health data to Apple Health.</string>
 	<key>CFBundleURLTypes</key>

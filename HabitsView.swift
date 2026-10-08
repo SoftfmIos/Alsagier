@@ -39,13 +39,10 @@ struct HabitsView:View {
                                 VStack(alignment:.leading,spacing:5) {
                                     Text(h.name)
                                     Text(detail(h)).font(.caption).foregroundStyle(.secondary)
-                                    if let next = HabitDuePlanner.nextDue(h) {
-                                        Text("Next Due: \(next.formatted(.dateTime.weekday(.wide).day().month(.wide)))")
+                                    if let due = HabitDueEngine.nextDue(h) {
+                                        Text("Next due: \(due.formatted(date: .abbreviated, time: .omitted))")
                                             .font(.caption2).foregroundStyle(.secondary)
-                                    } else if !h.isEnabled {
-                                        Text("Paused").font(.caption2).foregroundStyle(.secondary)
                                     }
-
 
                                     if h.tracksWalking {
                                         walkingHealthRow(h)
@@ -129,7 +126,7 @@ struct HabitsView:View {
 
     private func detail(_ h:Habit)->String {
         if h.tracksWalking { return "\(h.stepTarget.formatted()) steps OR \(h.walkingMinutesTarget)m walking • \(h.timesPerWeek)x/week" }
-        return h.mode == .fixed ? "\(h.duration)m • fixed days" : "\(h.duration)m • \(h.timesPerWeek)x/week • Random"
+        return h.mode == .fixed ? "\(h.duration)m • \(h.recurrence.rawValue) • fixed days" : "\(h.duration)m • \(h.recurrence.rawValue) • selected due days"
     }
 }
 
@@ -161,10 +158,18 @@ private struct HabitEditor:View {
             Picker("Duration",selection:$habit.duration){ForEach([15,30,45,60,90],id:\.self){Text("\($0) min").tag($0)}}
             Picker("Road / travel time",selection:$habit.travelMinutes){Text("None").tag(0);Text("15 min").tag(15);Text("30 min").tag(30)}
             Picker("Scheduling",selection:$habit.mode){ForEach(HabitScheduleMode.allCases){Text($0.rawValue).tag($0)}}
+            Picker("Repeat",selection:$habit.recurrence){ForEach(HabitRecurrence.allCases){Text($0.rawValue).tag($0)}}
+            if habit.recurrence != .weekly {
+                DatePicker("Cycle starts", selection:$habit.recurrenceAnchor, displayedComponents:.date)
+            }
             if habit.mode == .fixed {
                 Section("Days") { ForEach(1...7,id:\.self){d in Toggle(Calendar.current.weekdaySymbols[d-1],isOn:Binding(get:{habit.weekdays.contains(d)},set:{v in if v{habit.weekdays.insert(d)}else{habit.weekdays.remove(d)}}))} }
             } else {
-                Stepper("\(habit.timesPerWeek) times per week",value:$habit.timesPerWeek,in:1...7)
+                if habit.recurrence == .weekly {
+                    Stepper("\(habit.timesPerWeek) times per week",value:$habit.timesPerWeek,in:1...7)
+                } else {
+                    Text("One occurrence per selected cycle").font(.caption).foregroundStyle(.secondary)
+                }
                 Picker("Preferred period",selection:$habit.preferredPeriod){ForEach(PreferredPeriod.allCases){Text($0.rawValue).tag($0)}}
                 Stepper("Earliest \(habit.earliestHour):00",value:$habit.earliestHour,in:0...22)
                 Stepper("Latest \(habit.latestHour):00",value:$habit.latestHour,in:(habit.earliestHour+1)...23)

@@ -1,19 +1,24 @@
 import SwiftUI
 
-private enum TaskFilter: Hashable { case all, active, closed, project(UUID) }
+private enum TaskFilter: Hashable { case all, active, closed }
 
 struct TasksView: View {
     @EnvironmentObject private var store:AppStore
     @State private var add=false
-    @State private var filter: TaskFilter = .all
+    @State private var filter: TaskFilter = .active
+    @State private var selectedProjectID: UUID?
     @State private var editingTask: ExecutiveTask?
+
+    private var projectTasks: [ExecutiveTask] {
+        guard let selectedProjectID else { return store.tasks }
+        return store.tasks.filter { $0.projectID == selectedProjectID }
+    }
 
     private var visible: [ExecutiveTask] {
         switch filter {
-        case .all: return store.tasks
-        case .active: return store.tasks.filter { !$0.isCompleted }
-        case .closed: return store.tasks.filter { $0.isCompleted }
-        case .project(let id): return store.tasks.filter { $0.projectID == id }
+        case .all: return projectTasks
+        case .active: return projectTasks.filter { !$0.isCompleted }
+        case .closed: return projectTasks.filter { $0.isCompleted }
         }
     }
 
@@ -21,6 +26,11 @@ struct TasksView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 VStack(spacing: 10) {
+                    HStack(spacing: 10) {
+                        taskMetric("Total", projectTasks.count, "tray.full") { filter = .all }
+                        taskMetric("Active", projectTasks.filter { !$0.isCompleted }.count, "clock") { filter = .active }
+                        taskMetric("Closed", projectTasks.filter { $0.isCompleted }.count, "checkmark.circle") { filter = .closed }
+                    }
                     Picker("Task status", selection: Binding(
                         get: { statusSelection },
                         set: { filter = $0 }
@@ -32,10 +42,10 @@ struct TasksView: View {
                     .pickerStyle(.segmented)
 
                     Menu {
-                        Button { filter = .all } label: { Label("All Projects", systemImage:"tray.full") }
+                        Button { selectedProjectID = nil } label: { Label("All Projects", systemImage:"tray.full") }
                         Divider()
                         ForEach(store.projects) { p in
-                            Button { filter = .project(p.id) } label: {
+                            Button { selectedProjectID = p.id } label: {
                                 Label(p.name, systemImage:"folder")
                             }
                         }
@@ -53,7 +63,7 @@ struct TasksView: View {
                         .background(Color(.secondarySystemBackground), in:RoundedRectangle(cornerRadius:12))
                     }
                     if isProjectFilter {
-                        Button { filter = .all } label: {
+                        Button { selectedProjectID = nil } label: {
                             Label("Clear project filter", systemImage:"xmark.circle.fill").font(.caption.weight(.semibold))
                         }.buttonStyle(.plain).foregroundStyle(.secondary)
                     }
@@ -87,6 +97,18 @@ struct TasksView: View {
             .sheet(item:$editingTask){ task in TaskEditorView(task:task) }
         }
     }
+    private func taskMetric(_ label: String, _ value: Int, _ icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 6) {
+                Image(systemName: icon).font(.caption).foregroundStyle(.secondary)
+                Text("\(value)").font(.title2.bold()).foregroundStyle(.primary)
+                Text(label).font(.caption2).foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+        }.buttonStyle(.plain)
+    }
     private var statusSelection: TaskFilter {
         switch filter {
         case .active: return .active
@@ -94,10 +116,10 @@ struct TasksView: View {
         default: return .all
         }
     }
-    private var isProjectFilter:Bool { if case .project = filter{return true}; return false }
-    private var projectFilterTitle:String {
-        if case .project(let id)=filter { return store.projects.first(where:{$0.id==id})?.name ?? "Project" }
-        return "Project"
+    private var isProjectFilter: Bool { selectedProjectID != nil }
+    private var projectFilterTitle: String {
+        guard let selectedProjectID else { return "All Projects" }
+        return store.projects.first(where: { $0.id == selectedProjectID })?.name ?? "Project"
     }
 }
 

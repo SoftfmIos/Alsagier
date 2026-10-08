@@ -12,6 +12,7 @@ enum HabitIntelligence {
     private struct Rule { let key:String; let icon:String; let minutes:Int; let walking:Bool; let progress:Bool; let terms:[String] }
     // Specific activities are intentionally ordered before broad concepts such as workout, sea, reading and sleep.
     private static let rules:[Rule] = [
+        .init(key:"cardgames",icon:"suit.club.fill",minutes:120,walking:false,progress:false,terms:["بلوت","لعب ورق","كنكان","هاند","baloot","card games","playing cards","canasta"]),
         .init(key:"quran",icon:"book.closed.fill",minutes:20,walking:false,progress:true,terms:["quran","qur'an","قران","القران","قرآن","القرآن","ورد القران","ورد القرآن"]),
         .init(key:"racket",icon:"tennis.racket",minutes:60,walking:false,progress:false,terms:["tennis","padel","paddle","squash","تنس","بادل","سكواش"]),
         .init(key:"football",icon:"soccerball",minutes:60,walking:false,progress:false,terms:["football","soccer","كرة قدم","كره قدم","كورة","كوره"]),

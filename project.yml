@@ -22,7 +22,7 @@ targets:
       - CalendarManager.swift
       - HabitsView.swift
       - HealthManager.swift
-      - HabitDuePlanner.swift
+      - PersonalEnergyHealth.swift
       - HabitIntelligence.swift
       - LiveActivityManager.swift
       - MainTabView.swift

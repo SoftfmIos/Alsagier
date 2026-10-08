@@ -11,6 +11,7 @@ struct TodayView: View {
     @State private var confirmEnd = false
     @State private var refreshing = false
     @State private var actionBlock: ScheduleBlock?
+    @State private var lastCompletedBlock: ScheduleBlock?
     @State private var switchBlock: ScheduleBlock?
     @State private var emotionInsight: WorkInsight?
     @State private var dadJoke: String?
@@ -30,6 +31,20 @@ struct TodayView: View {
             .navigationTitle("Today")
             .toolbar { Button { history=true } label: { Image(systemName:"clock.arrow.circlepath") } }
             .sheet(isPresented:$history) { HistoryView() }
+            .safeAreaInset(edge: .bottom) {
+                if let completed = lastCompletedBlock {
+                    HStack {
+                        Text("Marked Done").font(.subheadline)
+                        Spacer()
+                        Button("Undo") { undo(completed) }.fontWeight(.semibold)
+                        Button { lastCompletedBlock = nil } label: { Image(systemName: "xmark.circle.fill") }
+                            .accessibilityLabel("Dismiss Undo")
+                    }
+                    .padding(12)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal)
+                }
+            }
             .confirmationDialog("End your workday?", isPresented:$confirmEnd, titleVisibility:.visible) {
                 Button("End My Day", role:.destructive) { endDay() }
                 Button("Cancel", role:.cancel) {}
@@ -39,6 +54,7 @@ struct TodayView: View {
             .confirmationDialog(actionBlock?.title ?? "Schedule action", isPresented: Binding(
                 get:{ actionBlock != nil }, set:{ if !$0 { actionBlock=nil } }), titleVisibility:.visible) {
                 if let b=actionBlock, canClose(b) { Button("Done") { close(b); actionBlock=nil } }
+                if let b=actionBlock, b.isCompleted, b.kind != .prayer { Button("Mark as Not Done") { undo(b); actionBlock=nil } }
                 if let b=actionBlock, canSwitch(b) { Button("Switch Work") { switchBlock=b; actionBlock=nil } }
                 if let b=actionBlock, !b.isLocked { Button("+15 min") { extend(b); actionBlock=nil } }
                 if let b=actionBlock, !b.isLocked { Button("Skip Today") { skip(b); actionBlock=nil } }
@@ -189,7 +205,7 @@ struct TodayView: View {
             LazyVStack(spacing:9) {
                 ForEach(blocks) { b in
                     SwipeableTimelineCard(block:b,
-                        onTap:{ if !b.isCompleted && !b.isSkipped && b.kind != .prayer { actionBlock=b } },
+                        onTap:{ if !b.isSkipped && b.kind != .prayer { actionBlock=b } },
                         onDone:{ close(b) }, onExtend:{ extend(b) }, onSkip:{ skip(b) })
                 }
             }
@@ -262,6 +278,14 @@ struct TodayView: View {
             store.complete(b,calendar:calendar.todayBlocks,prayers:prayers.blocks)
             if b.kind == .task || b.kind == .project { emotionInsight = store.latestUnratedInsight }
         }
+        lastCompletedBlock = b
+        refreshEverything()
+    }
+
+    private func undo(_ b: ScheduleBlock) {
+        store.undoCompletion(b, calendar: calendar.todayBlocks, prayers: prayers.blocks)
+        lastCompletedBlock = nil
+        emotionInsight = nil
         refreshEverything()
     }
 

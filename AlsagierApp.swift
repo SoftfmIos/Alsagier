@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct AlsagierApp: App {
+    @AppStorage("capjour.interfaceLanguage") private var interfaceLanguage = "automatic"
     @StateObject private var store = AppStore()
     @StateObject private var calendar = CalendarManager()
     @StateObject private var notifications = NotificationManager()
@@ -10,6 +11,8 @@ struct AlsagierApp: App {
     var body: some Scene {
         WindowGroup {
             MainTabView()
+                .environment(\.locale, interfaceLanguage == "arabic" ? Locale(identifier: "ar_SA") : interfaceLanguage == "english" ? Locale(identifier: "en_US") : .current)
+                .environment(\.layoutDirection, interfaceLanguage == "arabic" ? .rightToLeft : interfaceLanguage == "english" ? .leftToRight : (Locale.current.language.languageCode?.identifier == "ar" ? .rightToLeft : .leftToRight))
                 .environmentObject(store)
                 .environmentObject(calendar)
                 .environmentObject(notifications)

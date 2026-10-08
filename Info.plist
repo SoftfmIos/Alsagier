@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>CapJour</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>CapJour uses your calendar to protect appointments and organize your day around them.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>CapJour uses your location to calculate local prayer times and protect prayer time in your daily plan.</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>CapJour sends reminders shortly before scheduled blocks.</string>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>CapJour reads your step count and walking activity from Apple Health to track progress toward your personal walking habits and daily goals.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>CapJour uses HealthKit access to support progress and completion tracking for your personal walking habits. CapJour does not write health data to Apple Health.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.softfm.alsagierapp</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>alsagier</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

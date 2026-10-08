@@ -1,0 +1,1706 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Today": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اليوم"
+          }
+        }
+      }
+    },
+    "Projects": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المشاريع"
+          }
+        }
+      }
+    },
+    "Tasks": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المهام"
+          }
+        }
+      }
+    },
+    "Habits": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العادات"
+          }
+        }
+      }
+    },
+    "More": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المزيد"
+          }
+        }
+      }
+    },
+    "Insights Dashboard": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لوحة التحليلات"
+          }
+        }
+      }
+    },
+    "Emotion Check-in": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تقييم المشاعر"
+          }
+        }
+      }
+    },
+    "Weekly Review": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المراجعة الأسبوعية"
+          }
+        }
+      }
+    },
+    "Correct Past Completions": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تصحيح الإنجازات السابقة"
+          }
+        }
+      }
+    },
+    "Personal Energy": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الطاقة الشخصية"
+          }
+        }
+      }
+    },
+    "Insights & Intelligence": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التحليلات والذكاء"
+          }
+        }
+      }
+    },
+    "Health & Connections": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصحة والاتصالات"
+          }
+        }
+      }
+    },
+    "Planning & Settings": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التخطيط والإعدادات"
+          }
+        }
+      }
+    },
+    "Apple Health": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صحّة Apple"
+          }
+        }
+      }
+    },
+    "About CapJour": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حول كاب جور"
+          }
+        }
+      }
+    },
+    "About": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حول التطبيق"
+          }
+        }
+      }
+    },
+    "Active": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نشطة"
+          }
+        }
+      }
+    },
+    "Closed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مغلقة"
+          }
+        }
+      }
+    },
+    "All": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الكل"
+          }
+        }
+      }
+    },
+    "All Projects": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كل المشاريع"
+          }
+        }
+      }
+    },
+    "Total": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإجمالي"
+          }
+        }
+      }
+    },
+    "Active Tasks": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المهام النشطة"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حذف"
+          }
+        }
+      }
+    },
+    "Duplicate": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تكرار"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إلغاء"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حفظ"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم"
+          }
+        }
+      }
+    },
+    "Undo": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تراجع"
+          }
+        }
+      }
+    },
+    "Dismiss Undo": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إخفاء التراجع"
+          }
+        }
+      }
+    },
+    "Refresh": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحديث"
+          }
+        }
+      }
+    },
+    "Next": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التالي"
+          }
+        }
+      }
+    },
+    "NEXT": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التالي"
+          }
+        }
+      }
+    },
+    "Start My Day": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابدأ يومي"
+          }
+        }
+      }
+    },
+    "End My Day": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أنهِ يومي"
+          }
+        }
+      }
+    },
+    "End your workday?": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هل تريد إنهاء يوم العمل؟"
+          }
+        }
+      }
+    },
+    "Re-open My Day": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إعادة فتح يومي"
+          }
+        }
+      }
+    },
+    "Skip": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تخطّي"
+          }
+        }
+      }
+    },
+    "Skip Today": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تخطّي اليوم"
+          }
+        }
+      }
+    },
+    "Mark Not Done": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إلغاء الإنجاز"
+          }
+        }
+      }
+    },
+    "Mark as Not Done": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إلغاء علامة الإنجاز"
+          }
+        }
+      }
+    },
+    "Marked Done": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم الإنجاز"
+          }
+        }
+      }
+    },
+    "Switch Work": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تغيير العمل"
+          }
+        }
+      }
+    },
+    "Day Summary": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ملخص اليوم"
+          }
+        }
+      }
+    },
+    "Final Timeline": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الجدول الزمني النهائي"
+          }
+        }
+      }
+    },
+    "Past Days": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأيام السابقة"
+          }
+        }
+      }
+    },
+    "Project": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مشروع"
+          }
+        }
+      }
+    },
+    "Task": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مهمة"
+          }
+        }
+      }
+    },
+    "Status": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الحالة"
+          }
+        }
+      }
+    },
+    "Priority": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأولوية"
+          }
+        }
+      }
+    },
+    "Importance": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأهمية"
+          }
+        }
+      }
+    },
+    "Duration": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المدة"
+          }
+        }
+      }
+    },
+    "Color": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اللون"
+          }
+        }
+      }
+    },
+    "Mode": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النمط"
+          }
+        }
+      }
+    },
+    "Repeat": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التكرار"
+          }
+        }
+      }
+    },
+    "Focus block": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فترة تركيز"
+          }
+        }
+      }
+    },
+    "Focus Time": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وقت التركيز"
+          }
+        }
+      }
+    },
+    "Total Focus": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إجمالي التركيز"
+          }
+        }
+      }
+    },
+    "Time Breakdown": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "توزيع الوقت"
+          }
+        }
+      }
+    },
+    "Time Accuracy": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دقة الوقت"
+          }
+        }
+      }
+    },
+    "Time accuracy": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دقة الوقت"
+          }
+        }
+      }
+    },
+    "Project Work": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عمل المشاريع"
+          }
+        }
+      }
+    },
+    "Completed Work": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العمل المنجز"
+          }
+        }
+      }
+    },
+    "Completion": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإنجاز"
+          }
+        }
+      }
+    },
+    "Completions are counted from recorded occurrences, not free calendar slots.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُحتسب الإنجاز من مرات التنفيذ المسجلة وليس من فترات التقويم الفارغة."
+          }
+        }
+      }
+    },
+    "Completed historical sessions": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الجلسات السابقة المكتملة"
+          }
+        }
+      }
+    },
+    "Past Corrections": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التصحيحات السابقة"
+          }
+        }
+      }
+    },
+    "Correction log": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سجل التصحيحات"
+          }
+        }
+      }
+    },
+    "Correction reason": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سبب التصحيح"
+          }
+        }
+      }
+    },
+    "Correct": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تصحيح"
+          }
+        }
+      }
+    },
+    "Correct this historical completion?": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هل تريد تصحيح هذا الإنجاز السابق؟"
+          }
+        }
+      }
+    },
+    "Reason": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السبب"
+          }
+        }
+      }
+    },
+    "Past timelines are preserved. Corrections are recorded with their time and reason.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تُحفظ الجداول الزمنية السابقة، وتُسجل التصحيحات مع وقتها وسببها."
+          }
+        }
+      }
+    },
+    "All recorded work sessions have an emotion rating.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جميع جلسات العمل المسجلة لديها تقييم للمشاعر."
+          }
+        }
+      }
+    },
+    "Emotion": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المشاعر"
+          }
+        }
+      }
+    },
+    "EMOTION": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المشاعر"
+          }
+        }
+      }
+    },
+    "Emotion Rating": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تقييم المشاعر"
+          }
+        }
+      }
+    },
+    "How did this work feel?": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كيف كان شعورك أثناء هذا العمل؟"
+          }
+        }
+      }
+    },
+    "Focus & Emotion": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التركيز والمشاعر"
+          }
+        }
+      }
+    },
+    "Optional • used only for your local Insights": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختياري • يُستخدم فقط في التحليلات المحلية"
+          }
+        }
+      }
+    },
+    "Optional. You can add or change this later. It only updates your local Insights history.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختياري. يمكنك إضافته أو تعديله لاحقًا، وسيُحدّث سجل تحليلاتك المحلي فقط."
+          }
+        }
+      }
+    },
+    "7 Days": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "٧ أيام"
+          }
+        }
+      }
+    },
+    "30 Days": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "٣٠ يومًا"
+          }
+        }
+      }
+    },
+    "All Time": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كل الفترات"
+          }
+        }
+      }
+    },
+    "Last 7 days": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آخر ٧ أيام"
+          }
+        }
+      }
+    },
+    "Days": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأيام"
+          }
+        }
+      }
+    },
+    "Range": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النطاق"
+          }
+        }
+      }
+    },
+    "Data": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "البيانات"
+          }
+        }
+      }
+    },
+    "Backup": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النسخ الاحتياطي"
+          }
+        }
+      }
+    },
+    "Export CapJour Backup": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تصدير نسخة احتياطية من كاب جور"
+          }
+        }
+      }
+    },
+    "Restore CapJour Backup": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "استعادة نسخة احتياطية من كاب جور"
+          }
+        }
+      }
+    },
+    "CapJour Backup": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نسخة كاب جور الاحتياطية"
+          }
+        }
+      }
+    },
+    "Clear": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مسح"
+          }
+        }
+      }
+    },
+    "Clear Schedule History": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مسح سجل الجداول"
+          }
+        }
+      }
+    },
+    "Clear schedule history?": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هل تريد مسح سجل الجداول؟"
+          }
+        }
+      }
+    },
+    "Reset All CapJour Data": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إعادة ضبط جميع بيانات كاب جور"
+          }
+        }
+      }
+    },
+    "Reset CapJour": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إعادة ضبط كاب جور"
+          }
+        }
+      }
+    },
+    "Reset CapJour?": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هل تريد إعادة ضبط كاب جور؟"
+          }
+        }
+      }
+    },
+    "Notifications": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإشعارات"
+          }
+        }
+      }
+    },
+    "Permissions": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الأذونات"
+          }
+        }
+      }
+    },
+    "Scheduling": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الجدولة"
+          }
+        }
+      }
+    },
+    "Work ends": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نهاية العمل"
+          }
+        }
+      }
+    },
+    "Personal planning until": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التخطيط الشخصي حتى"
+          }
+        }
+      }
+    },
+    "Preferred period": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الفترة المفضلة"
+          }
+        }
+      }
+    },
+    "Daily allocation": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التخصيص اليومي"
+          }
+        }
+      }
+    },
+    "Day boundaries": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حدود اليوم"
+          }
+        }
+      }
+    },
+    "Before each block": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قبل كل فترة"
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا شيء"
+          }
+        }
+      }
+    },
+    "Off": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إيقاف"
+          }
+        }
+      }
+    },
+    "Apply": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تطبيق"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "موافق"
+          }
+        }
+      }
+    },
+    "Not now": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ليس الآن"
+          }
+        }
+      }
+    },
+    "Let's go": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لنبدأ"
+          }
+        }
+      }
+    },
+    "WHAT NOW?": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ماذا الآن؟"
+          }
+        }
+      }
+    },
+    "Free right now": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "متاح الآن"
+          }
+        }
+      }
+    },
+    "Calls": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المكالمات"
+          }
+        }
+      }
+    },
+    "Communication": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التواصل"
+          }
+        }
+      }
+    },
+    "Email": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "البريد الإلكتروني"
+          }
+        }
+      }
+    },
+    "Road time": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وقت الطريق"
+          }
+        }
+      }
+    },
+    "Road / travel time": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وقت الطريق والتنقل"
+          }
+        }
+      }
+    },
+    "One occurrence per selected cycle": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مرة واحدة في كل دورة محددة"
+          }
+        }
+      }
+    },
+    "Cycle starts": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بداية الدورة"
+          }
+        }
+      }
+    },
+    "Walking target — either target completes the day": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هدف المشي — يكفي تحقيق أي من الهدفين"
+          }
+        }
+      }
+    },
+    "Apple Health today: no gym workout recorded yet": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يوجد تمرين رياضي مسجل اليوم في صحّة Apple"
+          }
+        }
+      }
+    },
+    "Refresh Health Analysis": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحديث التحليل الصحي"
+          }
+        }
+      }
+    },
+    "Work sessions & heart rate": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جلسات العمل ومعدل ضربات القلب"
+          }
+        }
+      }
+    },
+    "No matching heart-rate readings": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد قراءات مطابقة لمعدل ضربات القلب"
+          }
+        }
+      }
+    },
+    "No recent sleep samples available": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا تتوفر بيانات نوم حديثة"
+          }
+        }
+      }
+    },
+    "No completed sessions in the last 30 days.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد جلسات مكتملة خلال آخر ٣٠ يومًا."
+          }
+        }
+      }
+    },
+    "Analyzing recent sessions…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ تحليل الجلسات الأخيرة…"
+          }
+        }
+      }
+    },
+    "Workout overlap — excluded from comparisons": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تداخل مع التمرين — مستبعد من المقارنات"
+          }
+        }
+      }
+    },
+    "Sleep & recorded emotion": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "النوم والمشاعر المسجلة"
+          }
+        }
+      }
+    },
+    "Sleep readings and ratings are observational and may be affected by other factors.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "قراءات النوم والتقييمات وصفية وقد تتأثر بعوامل أخرى."
+          }
+        }
+      }
+    },
+    "Privacy & interpretation": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الخصوصية وتفسير البيانات"
+          }
+        }
+      }
+    },
+    "How to read this": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كيفية قراءة النتائج"
+          }
+        }
+      }
+    },
+    "What we noticed": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ما لاحظناه"
+          }
+        }
+      }
+    },
+    "Duration suggestions — you decide": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اقتراحات المدة — القرار لك"
+          }
+        }
+      }
+    },
+    "Based on at least three recorded sessions. No duration changes without tapping Apply.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بناءً على ثلاث جلسات مسجلة على الأقل. لن تتغير المدة دون الضغط على «تطبيق»."
+          }
+        }
+      }
+    },
+    "More completed sessions are needed before making a duration suggestion.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نحتاج إلى جلسات مكتملة إضافية قبل اقتراح مدة مناسبة."
+          }
+        }
+      }
+    },
+    "More comparable morning and later sessions are needed to identify a time-of-day pattern.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نحتاج إلى جلسات أكثر قابلة للمقارنة صباحًا ولاحقًا لتحديد نمط مرتبط بوقت اليوم."
+          }
+        }
+      }
+    },
+    "This review uses completed CapJour sessions only. It does not infer stress or health conditions.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعتمد هذه المراجعة على جلسات كاب جور المكتملة فقط، ولا تستنتج حالات التوتر أو الحالات الصحية."
+          }
+        }
+      }
+    },
+    "Language / اللغة": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اللغة"
+          }
+        }
+      }
+    },
+    "App Language / لغة التطبيق": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لغة التطبيق"
+          }
+        }
+      }
+    },
+    "Automatic / تلقائي": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تلقائي"
+          }
+        }
+      }
+    },
+    "English": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإنجليزية"
+          }
+        }
+      }
+    },
+    "العربية": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "العربية"
+          }
+        }
+      }
+    },
+    "Language preference is saved separately from projects and tasks.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُحفظ تفضيل اللغة بشكل مستقل عن المشاريع والمهام."
+          }
+        }
+      }
+    },
+    "Your day. Your direction.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يومك، على نهجك."
+          }
+        }
+      }
+    },
+    "CapJour helps you decide what to do now.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يساعدك كاب جور على تحديد ما تفعله الآن."
+          }
+        }
+      }
+    },
+    "CapJour plans around Calendar, prayer, projects, tasks and habits.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ينظّم كاب جور وقتك حول التقويم والصلاة والمشاريع والمهام والعادات."
+          }
+        }
+      }
+    },
+    "CapJour is a personal daily companion that helps you organize your time around what matters.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كاب جور رفيق يومي يساعدك على تنظيم وقتك حول ما يهمك."
+          }
+        }
+      }
+    },
+    "Designed to reduce planning and help you focus on doing.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صُمم لتقليل وقت التخطيط ومساعدتك على التركيز على التنفيذ."
+          }
+        }
+      }
+    },
+    "Projects define what matters.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المشاريع تحدد أولوياتك."
+          }
+        }
+      }
+    },
+    "Tasks define what needs to be done.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المهام تحدد ما ينبغي إنجازه."
+          }
+        }
+      }
+    },
+    "Prayer protects your time.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أوقات الصلاة محمية في جدولك."
+          }
+        }
+      }
+    },
+    "Calendar tells CapJour where you need to be.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يخبر التقويم كاب جور بمواعيدك."
+          }
+        }
+      }
+    },
+    "See actual work time and optional happiness patterns. Your data stays in CapJour.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اطّلع على وقت العمل الفعلي وأنماط المشاعر الاختيارية. تبقى بياناتك في كاب جور."
+          }
+        }
+      }
+    },
+    "These actions never delete or change events in your iPhone Calendar.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذه الإجراءات لا تحذف أحداث تقويم iPhone أو تعدلها."
+          }
+        }
+      }
+    },
+    "Your progress will be saved. You can reopen today if you need to continue.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سيُحفظ تقدمك، ويمكنك إعادة فتح اليوم إذا احتجت إلى المتابعة."
+          }
+        }
+      }
+    },
+    "Clear project filter": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إلغاء تصفية المشاريع"
+          }
+        }
+      }
+    },
+    "Task status": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حالة المهمة"
+          }
+        }
+      }
+    },
+    "Project name": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسم المشروع"
+          }
+        }
+      }
+    },
+    "Habit name (e.g. Gym / النادي)": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسم العادة (مثل النادي)"
+          }
+        }
+      }
+    },
+    "Dad Joke": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نكتة"
+          }
+        }
+      }
+    },
+    "Dad Jokes": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نكت"
+          }
+        }
+      }
+    },
+    "CapJour app icon": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أيقونة تطبيق كاب جور"
+          }
+        }
+      }
+    },
+    "CapJour by Softfm": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "كاب جور من سوفت إف إم"
+          }
+        }
+      }
+    },
+    "Why CapJour?": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لماذا كاب جور؟"
+          }
+        }
+      }
+    },
+    "Version 6.0 • Build 21": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإصدار ٦٫٠ • البناء ٢١"
+          }
+        }
+      }
+    },
+    "One offline joke each time you start or re-open a day. No repeats until all 500 have been shown.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نكتة دون اتصال كلما بدأت يومك أو أعدت فتحه، دون تكرار حتى عرض جميع النكات الـ٥٠٠."
+          }
+        }
+      }
+    },
+    "No duration changes without tapping Apply.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا تتغير المدة دون الضغط على تطبيق."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

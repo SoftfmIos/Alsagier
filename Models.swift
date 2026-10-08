@@ -109,6 +109,14 @@ struct Project: Identifiable, Codable, Equatable {
     var status: ProjectStatus = .active
 }
 
+// Administrative closure is not a worked session or an emotion rating.
+struct AdministrativeProjectClosure: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var projectID: UUID
+    var date: Date = Date()
+    var taskIDs: [UUID]
+}
+
 struct ExecutiveTask: Identifiable, Codable, Equatable {
     var id = UUID()
     var title: String

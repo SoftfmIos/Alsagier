@@ -24,6 +24,7 @@ targets:
       - HealthManager.swift
       - PersonalEnergyHealth.swift
       - HabitIntelligence.swift
+      - HabitDueEngine.swift
       - LiveActivityManager.swift
       - MainTabView.swift
       - Models.swift

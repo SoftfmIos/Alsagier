@@ -1,0 +1,1 @@
+Build 30: localized prayer titles and task counters; added HealthKit diagnostics distinguishing no work sessions, no HR data and no matching HR timestamps. This does not compute clinical stress or guarantee WHOOP integration. Requires Codemagic/iPhone testing.

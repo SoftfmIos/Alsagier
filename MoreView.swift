@@ -693,7 +693,13 @@ private struct PersonalEnergyView: View {
                 if let hours = analyzer.report.sleepHours {
                     Text("Recorded sleep in the past 24 hours: \(hours, specifier: "%.1f") hours")
                 } else { Text("No recent sleep samples available").foregroundStyle(.secondary) }
-                Button("Refresh Health Analysis") { Task { await analyzer.analyze(store.insights) } }
+                Text(CapJourLocale.text("Eligible work sessions: \(analyzer.report.eligibleSessionCount)", "جلسات العمل المؤهلة: \(analyzer.report.eligibleSessionCount)"))
+                Text(CapJourLocale.text("Recent heart-rate samples (up to 2,000): \(analyzer.report.recentHeartRateCount)", "قراءات النبض الحديثة (حتى 2000): \(analyzer.report.recentHeartRateCount)"))
+                if let error = analyzer.report.heartRateQueryError {
+                    Text(CapJourLocale.text("Health query error: \(error)", "خطأ في قراءة بيانات الصحة: \(error)"))
+                        .foregroundStyle(.orange)
+                }
+                Button(CapJourLocale.text("Refresh Health Analysis", "تحديث تحليل الصحة")) { Task { await analyzer.analyze(store.insights) } }
             }
             Section("Sleep & recorded emotion") {
                 if let comparison = analyzer.report.sleepComparison {

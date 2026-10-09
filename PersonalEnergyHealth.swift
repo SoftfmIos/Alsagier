@@ -17,6 +17,9 @@ struct EnergyHealthReport {
     var sleepHours: Double?
     var sleepComparison: String?
     var message: String?
+    var eligibleSessionCount = 0
+    var recentHeartRateCount = 0
+    var heartRateQueryError: String?
 }
 
 @MainActor
@@ -47,6 +50,8 @@ final class EnergyHealthAnalyzer: ObservableObject {
         let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: now) ?? now
         let rows = insights.filter { $0.startedAt != nil && $0.actualMinutes > 0 && ($0.startedAt ?? $0.date) >= cutoff }
             .sorted { ($0.startedAt ?? $0.date) > ($1.startedAt ?? $1.date) }.prefix(40)
+        let diagnosticHeart = await sampleResult(type: heart, from: cutoff, to: now)
+        let recentHeartRateCount = diagnosticHeart.samples.count
         // Retrieve sleep once for the full reporting period. Overlapping stages from different
         // sources must not be double counted; merge the actual asleep intervals per night.
         let sleepRows = await samples(type: sleep, from: cutoff.addingTimeInterval(-86400), to: now) as? [HKCategorySample] ?? []
@@ -100,8 +105,27 @@ final class EnergyHealthAnalyzer: ObservableObject {
             }
         }
         if comparison == nil { comparison = "Sleep and emotion comparison requires at least eight sessions, including three in each sleep group, with both sleep and emotion recorded." }
+        let explanation: String? = rows.isEmpty
+            ? "No completed timed work sessions found in the last 30 days. Heart-rate charts require sessions with recorded start times."
+            : recentHeartRateCount == 0
+                ? "No Apple Health heart-rate samples returned in the last 30 days. Verify heart-rate sharing in Health and whether WHOOP writes heart-rate samples to Apple Health."
+                : sessions.allSatisfy { $0.averageBPM == nil }
+                    ? "Heart-rate samples exist, but none overlap the recorded work-session times. Check session timestamps and wearable sampling frequency."
+                    : nil
         report = EnergyHealthReport(sessions: sessions, sleepHours: recentSleep, sleepComparison: comparison,
-            message: sessions.allSatisfy { $0.averageBPM == nil } ? "No heart-rate samples were returned for recent work sessions. Check Apple Health permissions and WHOOP data sharing." : nil)
+            message: explanation, eligibleSessionCount: rows.count, recentHeartRateCount: recentHeartRateCount,
+            heartRateQueryError: diagnosticHeart.error)
+    }
+
+    private func sampleResult(type: HKSampleType, from start: Date, to end: Date) async -> (samples: [HKSample], error: String?) {
+        await withCheckedContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
+            let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: 2000,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]) { _, samples, error in
+                continuation.resume(returning: (samples ?? [], error?.localizedDescription))
+            }
+            health.execute(query)
+        }
     }
 
     private func samples(type: HKSampleType, from start: Date, to end: Date) async -> [HKSample] {

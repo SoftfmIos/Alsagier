@@ -27,17 +27,17 @@ struct TasksView: View {
             VStack(spacing: 0) {
                 VStack(spacing: 10) {
                     HStack(spacing: 10) {
-                        taskMetric("Total", projectTasks.count, "tray.full") { filter = .all }
-                        taskMetric("Active", projectTasks.filter { !$0.isCompleted }.count, "clock") { filter = .active }
-                        taskMetric("Closed", projectTasks.filter { $0.isCompleted }.count, "checkmark.circle") { filter = .closed }
+                        taskMetric(CapJourLocale.text("Total", "الإجمالي"), projectTasks.count, "tray.full") { filter = .all }
+                        taskMetric(CapJourLocale.text("Active", "النشطة"), projectTasks.filter { !$0.isCompleted }.count, "clock") { filter = .active }
+                        taskMetric(CapJourLocale.text("Closed", "المكتملة"), projectTasks.filter { $0.isCompleted }.count, "checkmark.circle") { filter = .closed }
                     }
                     Picker("Task status", selection: Binding(
                         get: { statusSelection },
                         set: { filter = $0 }
                     )) {
-                        Text("All").tag(TaskFilter.all)
-                        Text("Active").tag(TaskFilter.active)
-                        Text("Closed").tag(TaskFilter.closed)
+                        Text(CapJourLocale.text("All", "الكل")).tag(TaskFilter.all)
+                        Text(CapJourLocale.text("Active", "النشطة")).tag(TaskFilter.active)
+                        Text(CapJourLocale.text("Closed", "المكتملة")).tag(TaskFilter.closed)
                     }
                     .pickerStyle(.segmented)
 
@@ -92,7 +92,7 @@ struct TasksView: View {
                         }
                     }
                 }.listStyle(.plain)
-            }.navigationTitle("Tasks").toolbar{Button{add=true}label:{Image(systemName:"plus")}}
+            }.navigationTitle(CapJourLocale.text("Tasks", "المهام")).toolbar{Button{add=true}label:{Image(systemName:"plus")}}
             .sheet(isPresented:$add){TaskEditorView(task:nil)}
             .sheet(item:$editingTask){ task in TaskEditorView(task:task) }
         }
@@ -153,8 +153,8 @@ private struct TaskEditorView:View {
         Picker("Priority",selection:$priority){ForEach(WorkPriority.allCases){Text($0.rawValue).tag($0)}}
         if task != nil {
             Picker("Status",selection:$isCompleted) {
-                Text("Active").tag(false)
-                Text("Closed").tag(true)
+                Text(CapJourLocale.text("Active", "النشطة")).tag(false)
+                Text(CapJourLocale.text("Closed", "المكتملة")).tag(true)
             }
         }
         if task != nil && isCompleted {

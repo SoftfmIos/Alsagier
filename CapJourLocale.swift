@@ -29,7 +29,12 @@ enum CapJourLocale {
         f.dateFormat = uses24 ? "HH:mm" : "h:mm a"
         return f.string(from: value)
     }
+    static func prayer(_ title: String) -> String {
+        guard arabic else { return title }
+        let names = ["Fajr":"الفجر", "Dhuhr":"الظهر", "Asr":"العصر", "Maghrib":"المغرب", "Isha":"العشاء"]
+        return names[title] ?? title
+    }
     static func next(_ title: String, _ time: Date) -> String {
-        arabic ? "التالي: \(title) • \(self.time(time))" : "Next: \(title) • \(self.time(time))"
+        arabic ? "التالي: \(prayer(title)) • \(self.time(time))" : "Next: \(title) • \(self.time(time))"
     }
 }

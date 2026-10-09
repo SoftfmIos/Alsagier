@@ -113,7 +113,7 @@ struct TodayView: View {
                 Text("WHAT NOW?").font(.caption.bold()).foregroundStyle(.secondary)
                 if let b=current {
                     HStack(alignment:.firstTextBaseline) {
-                        Text(b.title).font(.title2.bold()).foregroundStyle(b.color)
+                        Text(b.kind == .prayer ? CapJourLocale.prayer(b.title) : b.title).font(.title2.bold()).foregroundStyle(b.color)
                         Spacer()
                         Text(CapJourLocale.arabic ? "متبقي \(max(0,Int(b.end.timeIntervalSince(now)/60))) دقيقة" : "\(max(0,Int(b.end.timeIntervalSince(now)/60)))m left")
                             .font(.headline).foregroundStyle(.secondary)
@@ -213,15 +213,15 @@ struct TodayView: View {
 
         return VStack(spacing:10) {
             HStack {
-                metric("Calendar", calendarBlocks.count, calendarBlocks.reduce(0){$0+$1.durationMinutes}, "events")
+                metric(CapJourLocale.text("Calendar", "التقويم"), calendarBlocks.count, calendarBlocks.reduce(0){$0+$1.durationMinutes}, "events")
                 Spacer()
-                metric("Focus", focusBlocks.count, focusBlocks.reduce(0){$0+$1.durationMinutes}, "blocks")
+                metric(CapJourLocale.text("Focus", "التركيز"), focusBlocks.count, focusBlocks.reduce(0){$0+$1.durationMinutes}, "blocks")
                 Spacer()
-                metric("Habits", habitBlocks.count, habitBlocks.reduce(0){$0+$1.durationMinutes}, "habits")
+                metric(CapJourLocale.text("Habits", "العادات"), habitBlocks.count, habitBlocks.reduce(0){$0+$1.durationMinutes}, "habits")
             }
             Divider()
             HStack {
-                Text("Total").font(.caption.bold())
+                Text(CapJourLocale.text("Total", "الإجمالي")).font(.caption.bold())
                 Spacer()
                 Text(CapJourLocale.arabic ? "\(counted) عناصر" : "\(counted) items").font(.subheadline.bold())
                 Text("• \(durationText(totalMinutes))").font(.subheadline.bold())
@@ -445,7 +445,7 @@ private struct TimelineCard: View {
                     .foregroundStyle(.secondary)
                     .frame(width:18)
                 VStack(alignment:.leading,spacing:1) {
-                    Text(block.title)
+                    Text(block.kind == .prayer ? CapJourLocale.prayer(block.title) : block.title)
                         .font(.caption.bold())
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -466,7 +466,7 @@ private struct TimelineCard: View {
                 VStack(alignment:.leading,spacing:4) {
                     HStack {
                         Image(systemName:block.kind.icon).foregroundStyle(block.color)
-                        Text(block.title)
+                        Text(block.kind == .prayer ? CapJourLocale.prayer(block.title) : block.title)
                             .font(.headline)
                             .foregroundStyle(block.projectColor?.color ?? (block.kind == .prayer ? .green : .primary))
                         if block.isLocked { Image(systemName:"lock.fill").font(.caption).foregroundStyle(.secondary) }

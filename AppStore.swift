@@ -13,6 +13,73 @@ final class AppStore: ObservableObject {
     @Published var habitCompletions: [HabitCompletion] = []
     @Published var settings = AppSettings()
 
+    // Approved recovery moves are day-scoped; tasks themselves remain unfinished.
+    private let recoveryMoveKey = "capjour.v6.recovery.movedTaskIDs"
+    private func movedTodayIDs() -> Set<UUID> {
+        let key = Calendar.current.startOfDay(for: Date()).timeIntervalSince1970
+        guard let record = defaults.dictionary(forKey: recoveryMoveKey),
+              let stamp = record["day"] as? Double, stamp == key,
+              let ids = record["ids"] as? [String] else { return [] }
+        return Set(ids.compactMap(UUID.init(uuidString:)))
+    }
+
+    struct RecoverySuggestion {
+        let movedBlockIDs: [UUID]
+        let movedTaskIDs: [UUID]
+        let taskNames: [String]
+        let minutesRecovered: Int
+    }
+
+    // Pure preview: no persistence, notifications, or schedule changes.
+    func recoverySuggestion(now: Date = Date()) -> RecoverySuggestion? {
+        guard isDayActive, let plan = todayPlan,
+              let cutoff = Calendar.current.date(bySettingHour: settings.workEndHour,
+                  minute: 0, second: 0, of: now), now < cutoff else { return nil }
+        let future = plan.blocks.filter { !$0.isCompleted && !$0.isSkipped && $0.start > now }
+            .sorted { $0.start < $1.start }
+        let movable = future.filter { block in
+            guard block.kind == .task, let id = block.sourceID,
+                  let task = tasks.first(where: { $0.id == id && !$0.isCompleted }) else { return false }
+            return task.projectID.flatMap { pid in projects.first(where: { $0.id == pid && $0.status == .active }) } != nil
+        }
+        guard !movable.isEmpty else { return nil }
+        // Only propose recovery when projected remaining flexible work cannot fit.
+        // Fixed appointments/prayers remain immovable and consume capacity.
+        let fixed = plan.blocks.filter { ($0.kind == .calendar || $0.kind == .prayer) && $0.end > now }
+        let occupied = fixed.reduce(0.0) { total, block in
+            total + max(0, min(block.end, cutoff).timeIntervalSince(max(block.start, now)))
+        }
+        let capacity = max(0, cutoff.timeIntervalSince(now) - occupied)
+        let workload = future.filter { $0.kind != .calendar && $0.kind != .prayer }
+            .reduce(0.0) { $0 + $1.end.timeIntervalSince($1.start) }
+        var overflow = workload - capacity
+        guard overflow > 60 else { return nil }
+        var selected: [ScheduleBlock] = []
+        // Move the least urgent, latest not-yet-started task first.
+        for block in movable.reversed() {
+            guard overflow > 0 else { break }
+            selected.append(block)
+            overflow -= block.end.timeIntervalSince(block.start)
+        }
+        let ids = Set(selected.compactMap(\.sourceID))
+        return RecoverySuggestion(movedBlockIDs: selected.map(\.id), movedTaskIDs: Array(ids),
+            taskNames: ids.compactMap { id in tasks.first(where: { $0.id == id })?.title },
+            minutesRecovered: selected.reduce(0) { $0 + $1.durationMinutes })
+    }
+
+    // Call only from the explicit Approve button; reject stale proposals.
+    func approveRecovery(_ suggestion: RecoverySuggestion, now: Date = Date()) -> Bool {
+        guard let current = recoverySuggestion(now: now),
+              Set(current.movedBlockIDs) == Set(suggestion.movedBlockIDs),
+              let di = todayIndex else { return false }
+        let moved = movedTodayIDs().union(current.movedTaskIDs)
+        defaults.set(["day": Calendar.current.startOfDay(for: now).timeIntervalSince1970,
+                      "ids": moved.map(\.uuidString)] as [String: Any], forKey: recoveryMoveKey)
+        dayPlans[di].blocks.removeAll { current.movedBlockIDs.contains($0.id) }
+        save()
+        return true
+    }
+
     private let defaults = UserDefaults.standard
     private let pKey = "alsagier.v5.projects"
     private let tKey = "alsagier.v5.tasks"
@@ -450,6 +517,7 @@ final class AppStore: ObservableObject {
         insights = []
         habitCompletions = []
         settings = AppSettings()
+        defaults.removeObject(forKey: recoveryMoveKey)
         defaults.set(true, forKey: migrationKey) // never resurrect V4.3 test data after reset
         save()
     }
@@ -547,6 +615,7 @@ final class AppStore: ObservableObject {
                        abs(existing.start.timeIntervalSince(candidate.start)) <= (candidate.kind == .prayer ? 5 * 60 : 60) &&
                        abs(existing.end.timeIntervalSince(candidate.end)) <= (candidate.kind == .prayer ? 5 * 60 : 60)
                    }) { return false }
+                if candidate.kind == .task, let source = candidate.sourceID, movedTodayIDs().contains(source) { return false }
                 if let source = candidate.sourceID, closedSourceIDs.contains(source) { return false }
                 if let source = candidate.sourceID,
                    pairedHabitSources.contains(source),
@@ -697,7 +766,7 @@ final class AppStore: ObservableObject {
                 let pending = tasks.filter {!$0.isCompleted && $0.projectID == project.id}.sorted {
                     $0.priority.rank == $1.priority.rank ? $0.createdAt < $1.createdAt : $0.priority.rank < $1.priority.rank
                 }
-                for task in pending where used < project.dailyMinutes {
+                for task in pending where used < project.dailyMinutes && !movedTodayIDs().contains(task.id) {
                     let available = min(task.duration, project.dailyMinutes - used)
                     guard available > 0 else { continue }
 

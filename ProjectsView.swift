@@ -101,7 +101,7 @@ struct ProjectsView: View {
             } message: {
                 if let project = pendingClosure {
                     let unfinished = store.tasks.filter { $0.projectID == project.id && !$0.isCompleted }.count
-                    Text("\(unfinished) unfinished tasks will be marked Done administratively. No work sessions or emotion ratings will be created.")
+                    Text(CapJourLocale.arabic ? "سيتم إكمال \(unfinished) مهام إداريًا دون تسجيل جلسات عمل أو تقييمات شعورية." : "\(unfinished) unfinished tasks will be marked Done administratively. No work sessions or emotion ratings will be created.")
                 }
             }
         }
@@ -133,7 +133,7 @@ struct ProjectsView: View {
             }
             .frame(height: 7)
             HStack {
-                Text("\(progress.done) of \(progress.total) tasks")
+                Text(CapJourLocale.arabic ? "\(progress.done) من أصل \(progress.total) مهام" : "\(progress.done) of \(progress.total) tasks")
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 Text("\(Int((fraction * 100).rounded()))%")

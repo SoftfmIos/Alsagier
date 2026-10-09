@@ -196,7 +196,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "كل المشاريع"
+            "value": "جميع المشاريع"
           }
         }
       }
@@ -336,7 +336,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "أنهِ يومي"
+            "value": "إنهاء يومي"
           }
         }
       }
@@ -356,7 +356,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "إعادة فتح يومي"
+            "value": "استئناف يومي"
           }
         }
       }
@@ -376,7 +376,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "تخطّي اليوم"
+            "value": "تخطي اليوم"
           }
         }
       }
@@ -396,7 +396,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "إلغاء علامة الإنجاز"
+            "value": "إلغاء الإنجاز"
           }
         }
       }
@@ -416,7 +416,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "تغيير العمل"
+            "value": "تبديل العمل"
           }
         }
       }
@@ -456,7 +456,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "مشروع"
+            "value": "المشروع"
           }
         }
       }
@@ -1586,7 +1586,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "إلغاء تصفية المشاريع"
+            "value": "إزالة تصفية المشروع"
           }
         }
       }
@@ -1697,6 +1697,376 @@
           "stringUnit": {
             "state": "translated",
             "value": "لا تتغير المدة دون الضغط على تطبيق."
+          }
+        }
+      }
+    },
+    "Edit Task": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعديل المهمة"
+          }
+        }
+      }
+    },
+    "New Task": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مهمة جديدة"
+          }
+        }
+      }
+    },
+    "Filter by Project": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تصفية حسب المشروع"
+          }
+        }
+      }
+    },
+    "Frozen": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مجمّدة"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إغلاق"
+          }
+        }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تعديل"
+          }
+        }
+      }
+    },
+    "Normal": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عادية"
+          }
+        }
+      }
+    },
+    "Low": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "منخفضة"
+          }
+        }
+      }
+    },
+    "High": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عالية"
+          }
+        }
+      }
+    },
+    "Next:": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التالي:"
+          }
+        }
+      }
+    },
+    "Refresh My Day": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحديث يومي"
+          }
+        }
+      }
+    },
+    "I'm 15m Late": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تأخرت 15 دقيقة"
+          }
+        }
+      }
+    },
+    "Calendar": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التقويم"
+          }
+        }
+      }
+    },
+    "Focus": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التركيز"
+          }
+        }
+      }
+    },
+    "events": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مواعيد"
+          }
+        }
+      }
+    },
+    "blocks": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فترات"
+          }
+        }
+      }
+    },
+    "habits": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عادات"
+          }
+        }
+      }
+    },
+    "items": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عناصر"
+          }
+        }
+      }
+    },
+    "Today's activity is synced from Health": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تمت مزامنة نشاط اليوم من تطبيق صحّة"
+          }
+        }
+      }
+    },
+    "Health access is needed to show today's activity": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يلزم السماح بالوصول إلى تطبيق صحّة لعرض نشاط اليوم"
+          }
+        }
+      }
+    },
+    "Weekly": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أسبوعيًا"
+          }
+        }
+      }
+    },
+    "Next due": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الموعد القادم"
+          }
+        }
+      }
+    },
+    "this week": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا الأسبوع"
+          }
+        }
+      }
+    },
+    "selected due days": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مواعيد محددة"
+          }
+        }
+      }
+    },
+    "fixed days": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أيام محددة"
+          }
+        }
+      }
+    },
+    "minutes": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دقائق"
+          }
+        }
+      }
+    },
+    "Close project": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إغلاق المشروع"
+          }
+        }
+      }
+    },
+    "Close project?": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هل تريد إغلاق المشروع؟"
+          }
+        }
+      }
+    },
+    "No projects": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد مشاريع"
+          }
+        }
+      }
+    },
+    "No projects in this category.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد مشاريع في هذه الفئة."
+          }
+        }
+      }
+    },
+    "Reopen by changing status to Active or Frozen below.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لإعادة فتح المشروع، غيّر حالته إلى نشط أو مجمّد أدناه."
+          }
+        }
+      }
+    },
+    "No schedule yet": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يوجد جدول بعد"
+          }
+        }
+      }
+    },
+    "Planning…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ التخطيط…"
+          }
+        }
+      }
+    },
+    "Refreshing…": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ التحديث…"
+          }
+        }
+      }
+    },
+    "Start your day when you're ready": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابدأ يومك عندما تكون مستعدًا"
+          }
+        }
+      }
+    },
+    "Today's planned blocks are complete": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اكتملت فترات اليوم المخططة"
+          }
+        }
+      }
+    },
+    "No Health Data Available. Check Apple Health permissions.": {
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا توجد بيانات صحية متاحة. تحقّق من أذونات تطبيق صحّة."
           }
         }
       }

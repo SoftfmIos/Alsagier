@@ -6,7 +6,7 @@ settings:
   base:
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     MARKETING_VERSION: "6.0"
-    CURRENT_PROJECT_VERSION: "27"
+    CURRENT_PROJECT_VERSION: "29"
 
 targets:
   Alsagier:
@@ -20,6 +20,7 @@ targets:
       - DadJokes.swift
       - AppStore.swift
       - CalendarManager.swift
+      - CapJourLocale.swift
       - HabitsView.swift
       - HealthManager.swift
       - PersonalEnergyHealth.swift

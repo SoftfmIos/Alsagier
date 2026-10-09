@@ -11,7 +11,7 @@ struct AlsagierApp: App {
     var body: some Scene {
         WindowGroup {
             MainTabView()
-                .environment(\.locale, interfaceLanguage == "arabic" ? Locale(identifier: "ar_SA") : interfaceLanguage == "english" ? Locale(identifier: "en_US") : .current)
+                .environment(\.locale, interfaceLanguage == "arabic" ? Locale(identifier: "ar_SA@numbers=latn") : interfaceLanguage == "english" ? Locale(identifier: "en_US") : .current)
                 .environment(\.layoutDirection, interfaceLanguage == "arabic" ? .rightToLeft : interfaceLanguage == "english" ? .leftToRight : (Locale.current.language.languageCode?.identifier == "ar" ? .rightToLeft : .leftToRight))
                 .environmentObject(store)
                 .environmentObject(calendar)

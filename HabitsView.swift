@@ -40,7 +40,7 @@ struct HabitsView:View {
                                     Text(h.name)
                                     Text(detail(h)).font(.caption).foregroundStyle(.secondary)
                                     if let due = HabitDueEngine.nextDue(h) {
-                                        Text("Next due: \(due.formatted(date: .abbreviated, time: .omitted))")
+                                        Text(CapJourLocale.arabic ? "الموعد القادم: \(CapJourLocale.date(due))" : "Next due: \(CapJourLocale.date(due))")
                                             .font(.caption2).foregroundStyle(.secondary)
                                     }
 
@@ -56,7 +56,7 @@ struct HabitsView:View {
                                             Image(systemName: i < progress.completed ? "circle.fill" : "circle")
                                                 .font(.system(size:8)).foregroundStyle(i < progress.completed ? .orange : .secondary)
                                         }
-                                        Text("\(progress.completed)/\(progress.target) this week").font(.caption2).foregroundStyle(.secondary)
+                                        Text(CapJourLocale.arabic ? "\(progress.completed) من \(progress.target) هذا الأسبوع" : "\(progress.completed)/\(progress.target) this week").font(.caption2).foregroundStyle(.secondary)
                                     }
                                 }
                                 Spacer(); if !h.isEnabled {Image(systemName:"pause.circle")}
@@ -125,8 +125,9 @@ struct HabitsView:View {
     private func isGym(_ h:Habit)->Bool { HabitIntelligence.profile(for:h.name).key == "workout" }
 
     private func detail(_ h:Habit)->String {
-        if h.tracksWalking { return "\(h.stepTarget.formatted()) steps OR \(h.walkingMinutesTarget)m walking • \(h.timesPerWeek)x/week" }
-        return h.mode == .fixed ? "\(h.duration)m • \(h.recurrence.rawValue) • fixed days" : "\(h.duration)m • \(h.recurrence.rawValue) • selected due days"
+        if h.tracksWalking { return CapJourLocale.arabic ? "\(h.stepTarget) خطوة أو \(h.walkingMinutesTarget) دقيقة مشي • \(h.timesPerWeek) مرات أسبوعيًا" : "\(h.stepTarget) steps OR \(h.walkingMinutesTarget)m walking • \(h.timesPerWeek)x/week" }
+        let recurrence = CapJourLocale.text(h.recurrence.rawValue, h.recurrence.rawValue == "Weekly" ? "أسبوعيًا" : h.recurrence.rawValue == "Monthly" ? "شهريًا" : h.recurrence.rawValue == "Every 2 Weeks" ? "كل أسبوعين" : h.recurrence.rawValue == "Every 3 Weeks" ? "كل 3 أسابيع" : h.recurrence.rawValue == "Every 4 Weeks" ? "كل 4 أسابيع" : h.recurrence.rawValue)
+        return "\(CapJourLocale.duration(h.duration)) • \(recurrence) • \(CapJourLocale.text(h.mode == .fixed ? "fixed days" : "selected due days", h.mode == .fixed ? "أيام محددة" : "مواعيد محددة"))"
     }
 }
 

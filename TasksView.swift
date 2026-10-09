@@ -52,7 +52,7 @@ struct TasksView: View {
                     } label: {
                         HStack(spacing:8) {
                             Image(systemName:"folder")
-                            Text(isProjectFilter ? projectFilterTitle : "Filter by Project")
+                            Text(isProjectFilter ? projectFilterTitle : CapJourLocale.text("Filter by Project", "تصفية حسب المشروع"))
                                 .lineLimit(1)
                             Spacer()
                             Image(systemName:"chevron.up.chevron.down").font(.caption)
@@ -77,7 +77,7 @@ struct TasksView: View {
                             VStack(alignment:.leading,spacing:3) {
                                 Text(t.title).strikethrough(t.isCompleted)
                                 HStack {
-                                    Text("\(t.duration)m • \(t.priority.rawValue)")
+                                    Text("\(CapJourLocale.duration(t.duration)) • \(CapJourLocale.text(t.priority.rawValue, t.priority.rawValue == "Normal" ? "عادية" : t.priority.rawValue == "Low" ? "منخفضة" : t.priority.rawValue == "High" ? "عالية" : t.priority.rawValue))")
                                     if let id=t.projectID,let p=store.projects.first(where:{$0.id==id}){Text("• \(p.name)").foregroundStyle(p.color.color)}
                                 }.font(.caption).foregroundStyle(.secondary)
                             }
@@ -176,7 +176,7 @@ private struct TaskEditorView:View {
                 }
             }
         }
-    }.navigationTitle(task == nil ? "New Task" : "Edit Task")
+    }.navigationTitle(CapJourLocale.text(task == nil ? "New Task" : "Edit Task", task == nil ? "مهمة جديدة" : "تعديل المهمة"))
     .onAppear {
         guard let task, task.isCompleted else { return }
         if let insight=store.latestInsight(for: task.id) {

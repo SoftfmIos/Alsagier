@@ -6,6 +6,8 @@ struct TodayView: View {
     @EnvironmentObject private var notifications: NotificationManager
     @EnvironmentObject private var prayers: PrayerManager
     @Environment(\.scenePhase) private var scenePhase
+    @State private var recoveryProposal: AppStore.RecoverySuggestion?
+    @State private var recoveryMessage: String?
     @State private var starting = false
     @State private var confirmEnd = false
     @State private var refreshing = false
@@ -22,6 +24,7 @@ struct TodayView: View {
                 VStack(spacing:14) {
                     whatNow
                     dayControls
+                    recoveryPanel
                     summary
                     timeline
                 }.padding()
@@ -42,6 +45,25 @@ struct TodayView: View {
                     .padding(.horizontal)
                 }
             }
+            .alert(CapJourLocale.arabic ? "استعادة الجدول" : "Recover My Day", isPresented: Binding(
+                get: { recoveryProposal != nil }, set: { if !$0 { recoveryProposal = nil } })) {
+                Button(CapJourLocale.arabic ? "موافقة" : "Approve") {
+                    if let proposal = recoveryProposal {
+                        if store.approveRecovery(proposal) { refreshEverything() }
+                        else { recoveryMessage = CapJourLocale.arabic ? "تغير الجدول. راجع الاقتراح مجددًا." : "Schedule changed. Please review again." }
+                    }
+                    recoveryProposal = nil
+                }
+                Button(CapJourLocale.arabic ? "الاحتفاظ بالجدول" : "Keep My Plan", role: .cancel) { recoveryProposal = nil }
+            } message: {
+                Text(recoveryProposal.map { proposal in
+                    let names = proposal.taskNames.joined(separator: ", ")
+                    return CapJourLocale.arabic ? "نقل إلى الغد: \(names). الوقت المتاح: \(proposal.minutesRecovered) دقيقة. لن تتغير المواعيد أو الصلوات." : "Move to tomorrow: \(names). Recover \(proposal.minutesRecovered) minutes. Calendar and prayers remain protected."
+                } ?? "")
+            }
+            .alert(CapJourLocale.arabic ? "تنبيه" : "Notice", isPresented: Binding(get: { recoveryMessage != nil }, set: { if !$0 { recoveryMessage = nil } })) {
+                Button("OK") { recoveryMessage = nil }
+            } message: { Text(recoveryMessage ?? "") }
             .confirmationDialog("End your workday?", isPresented:$confirmEnd, titleVisibility:.visible) {
                 Button("End My Day", role:.destructive) { endDay() }
                 Button("Cancel", role:.cancel) {}
@@ -93,18 +115,18 @@ struct TodayView: View {
                     HStack(alignment:.firstTextBaseline) {
                         Text(b.title).font(.title2.bold()).foregroundStyle(b.color)
                         Spacer()
-                        Text("\(max(0,Int(b.end.timeIntervalSince(now)/60)))m left")
+                        Text(CapJourLocale.arabic ? "متبقي \(max(0,Int(b.end.timeIntervalSince(now)/60))) دقيقة" : "\(max(0,Int(b.end.timeIntervalSince(now)/60)))m left")
                             .font(.headline).foregroundStyle(.secondary)
                     }
                     if let sub=b.subtitle { Text(sub).font(.headline) }
                     if let n=next {
                         Divider()
-                        Text("Next: \(n.title) • \(n.start.formatted(date:.omitted,time:.shortened))")
+                        Text(CapJourLocale.next(n.title, n.start))
                             .font(.subheadline).foregroundStyle(n.projectColor?.color ?? .secondary)
                     }
                 } else if let n=next {
                     Text("Free right now").font(.title2.bold())
-                    Text("Next: \(n.title) • \(n.start.formatted(date:.omitted,time:.shortened))")
+                    Text(CapJourLocale.next(n.title, n.start))
                         .foregroundStyle(n.projectColor?.color ?? .secondary)
                 } else {
                     Text(store.todayPlan == nil ? "Start your day when you're ready" : "Today's planned blocks are complete")
@@ -147,6 +169,40 @@ struct TodayView: View {
         }
     }
 
+    @ViewBuilder private var recoveryPanel: some View {
+        if store.isDayActive {
+            if let suggestion = store.recoverySuggestion() {
+                HStack(spacing: 10) {
+                    Image(systemName: "sparkles").foregroundStyle(.blue)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(CapJourLocale.arabic ? "يقترح CapJour" : "CapJour Suggests").font(.headline)
+                        Text(CapJourLocale.arabic ? "يمكن نقل \(suggestion.taskNames.count) مهمة إلى الغد لاستعادة وقتك." : "Move \(suggestion.taskNames.count) task(s) to tomorrow to recover your day.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 4)
+                    Button(CapJourLocale.arabic ? "مراجعة" : "Review") { recoveryProposal = suggestion }
+                        .buttonStyle(.borderedProminent)
+                }
+                .padding(12)
+                .background(.background, in: RoundedRectangle(cornerRadius: 14))
+            }
+            // Finishing grace: display only. Never schedules a new task past Work End.
+            if let end = Calendar.current.date(bySettingHour: store.settings.workEndHour, minute: 0, second: 0, of: Date()),
+               let final = blocks.filter({ ($0.kind == .task || $0.kind == .project) && !$0.isCompleted && !$0.isSkipped && $0.start < end && $0.end > end && $0.end.timeIntervalSince(end) <= 15 * 60 })
+                   .max(by: { $0.end < $1.end }) {
+                HStack {
+                    Image(systemName: "clock.badge.exclamationmark")
+                    Text(CapJourLocale.arabic ? "وقت إنهاء إضافي: \(Int(final.end.timeIntervalSince(end) / 60)) دقيقة — \(final.title)" : "Finishing grace: +\(Int(final.end.timeIntervalSince(end) / 60))m — \(final.title)")
+                        .font(.caption)
+                    Spacer()
+                }
+                .foregroundStyle(.orange)
+                .padding(10)
+                .background(Color.orange.opacity(0.09), in: RoundedRectangle(cornerRadius: 12))
+            }
+        }
+    }
+
     private var summary: some View {
         let calendarBlocks=blocks.filter {$0.kind == .calendar}
         let focusBlocks=blocks.filter {[BlockKind.task,.project].contains($0.kind)}
@@ -167,7 +223,7 @@ struct TodayView: View {
             HStack {
                 Text("Total").font(.caption.bold())
                 Spacer()
-                Text("\(counted) items").font(.subheadline.bold())
+                Text(CapJourLocale.arabic ? "\(counted) عناصر" : "\(counted) items").font(.subheadline.bold())
                 Text("• \(durationText(totalMinutes))").font(.subheadline.bold())
             }
             if !travelBlocks.isEmpty {
@@ -183,15 +239,14 @@ struct TodayView: View {
 
     private func metric(_ label:String,_ count:Int,_ minutes:Int,_ noun:String) -> some View {
         VStack(alignment:.leading,spacing:2) {
-            Text("\(count) \(noun)").font(.headline)
+            Text(CapJourLocale.arabic ? "\(count) \(CapJourLocale.text(noun, noun == "events" ? "مواعيد" : noun == "blocks" ? "فترات" : "عادات"))" : "\(count) \(noun)").font(.headline)
             Text(durationText(minutes)).font(.subheadline)
             Text(label).font(.caption).foregroundStyle(.secondary)
         }
     }
 
     private func durationText(_ minutes:Int) -> String {
-        if minutes < 60 { return "\(minutes)m" }
-        return minutes % 60 == 0 ? "\(minutes/60)h" : "\(minutes/60)h \(minutes%60)m"
+        return CapJourLocale.duration(minutes)
     }
 
     @ViewBuilder private var timeline: some View {
